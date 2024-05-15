@@ -1,6 +1,7 @@
 
 general:
   debug: false
+  remotes_confdir: ./contrib/config/
 
 logging:
   level: "info"
