@@ -58,6 +58,19 @@ remotes:
 The `default-remote` is used as default if the `entrypoint` of the node is not defined or in the command
 `ssh-compose shell` without other options.
 
+On running remote command `ssh-compose` try to set in the session the enviroments:
+
+- `SSH_COMPOSE_VERSION`: with the version of the ssh-compose used
+- `SSH_COMPOSE_PROJECT`: that contains the JSON object with the project environments.
+
+These variables will be availables only if in the target server the SSH Daemon config contains:
+
+```
+# cat /etc/ssh/sshd_config  | grep AcceptEnv | grep SSH_COM
+AcceptEnv SSH_COMPOSE SSH_COMPOSE_*
+
+```
+
 ### Add a new remote
 
 ```bash
@@ -106,9 +119,14 @@ Hereinafter, an example of the *apply* output:
 ```bash
 $> ssh-compose a ssh-compose-helloword
 Apply project ssh-compose-helloword
->>> [node1] - echo "Welcome to ssh-compose-${SSH_COMPOSE_VERSION}!!!" - ☕ 
+>>> [node-example] - echo "Welcome to ssh-compose-${SSH_COMPOSE_VERSION}!!!" - ☕ 
 Welcome to ssh-compose-0.0.1!!!
+>>> [node-example] - nodestr=$(echo "${SSH_COMPOSE_PROJECT}" | jq .node -r) ; echo "Node name $(echo "${nodestr}" | jq .name -r)" - ☕ 
+Node name node-example
+>>> [node-example] - echo "Variable var1 equal to $(echo "${SSH_COMPOSE_PROJECT}" | jq .var1 -r)" - ☕ 
+Variable var1 equal to value1
 All done.
+
 ```
 
 ### Enter in the shell of the remote configured
