@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/MottainaiCI/lxd-compose/pkg/logger"
+	"github.com/MottainaiCI/ssh-compose/pkg/logger"
 )
 
 func RegexEntry(regexString string, listEntries []string) []string {
