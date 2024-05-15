@@ -13,6 +13,13 @@ It's under heavy development phase and specification could be changed in the nea
 
 Incoming...
 
+## TODO for the first release
+
+- [] Integrate SFTP sync
+- [] Complete support of Private Key with Password
+- [] Cleanup logging
+- [] CD/CI integration
+
 ## Getting Started
 
 The file `.ssh-compose.yml` contains the rules about `ssh-compose` reads and loads the environments and projects.
