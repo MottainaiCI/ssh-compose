@@ -1,0 +1,18 @@
+
+general:
+  debug: false
+
+logging:
+  level: "info"
+  push_progressbar: true
+  runtime_cmds_output: true
+
+render_values_file: ./contrib/render/values.yml
+#render_default_file: ./contrib/examples/values.yml
+# Define the directories list where load environments.
+env_dirs:
+- ./contrib/envs
+
+render_templates_dirs:
+- ./contrib/render/templates
+
