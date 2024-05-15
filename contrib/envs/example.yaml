@@ -1,0 +1,66 @@
+version: "1"
+
+# Choice the template engine to use.
+# Supported engines are:
+#   - mottainai (customized golang template engine)
+#   - jinja2 (use j2cli engine)
+template_engine:
+  engine: "jinja2"
+  # Additional template engine options
+  # opts:
+  #   - "--undefined"
+  # For jinja2 there are a lot filter in ansible package
+  # that could be loaded with:
+  opts:
+    # Enable to_yaml, to_json, etc.
+    - "--filters"
+    - "contrib/filters/ansible_wrapper.py"
+    - "contrib/filters/from_json.py"
+
+
+projects:
+  - name: "ssh-compose-example1"
+    description: |-
+      SSH Compose Example1
+
+    hooks:
+      - event: pre-group
+        flags:
+          - test
+        commands:
+          - echo 1
+
+    groups:
+      - name: group1
+        description: "Description1"
+
+        nodes:
+          - name: node1
+            endpoint: test
+
+            labels:
+              mynode_data1: "data1"
+
+            entrypoint:
+              - "/bin/bash"
+              - "-c"
+
+            hooks:
+              - event: pre-node-sync
+                flags:
+                  - flag1
+                commands:
+                  - echo "1"
+
+
+              - event: pre-node-sync
+                flags:
+                  - flag1
+                commands:
+                  - |-
+                    anise repo update && \
+                    anise upgrade -y
+                  - >-
+                    anise i htop -y &&
+                    anise cleanup
+
