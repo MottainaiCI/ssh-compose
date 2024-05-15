@@ -67,14 +67,14 @@ These variables will be availables only if in the target server the SSH Daemon c
 
 ```
 # cat /etc/ssh/sshd_config  | grep AcceptEnv | grep SSH_COM
-AcceptEnv SSH_COMPOSE SSH_COMPOSE_*
+AcceptEnv SSH_COMPOSE_*
 
 ```
 
 ### Add a new remote
 
 ```bash
-$> ssh-compose remote a test --host 172.18.10.192 --user geaaru --auth-method password mynode --pass pass
+$> ssh-compose remote a test --host 172.18.10.192 --user geaaru --auth-method password --pass pass
 
 $> ssh-compose remote a mynode2 --host 10.20.20.10 --user geaaru --auth-method publickey \
         --privatekey-file ~/.ssh/id_dsa  --default
