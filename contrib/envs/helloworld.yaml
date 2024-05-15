@@ -8,12 +8,18 @@ projects:
     description: |-
       SSH Compose Helloworkd
 
+    # A fast way to define environments for template
+    vars:
+      - envs:
+          var1: "value1"
+          var2: "value2"
+
     groups:
-      - name: group1
+      - name: group-helloword
         description: "Group Nodes 1"
 
         nodes:
-          - name: node1
+          - name: node-example
             endpoint: test
 
             hooks:
@@ -22,3 +28,9 @@ projects:
                   - flag1
                 commands:
                   - echo "Welcome to ssh-compose-${SSH_COMPOSE_VERSION}!!!"
+                  #- echo "${SSH_COMPOSE_PROJECT}"
+                  - >-
+                    nodestr=$(echo "${SSH_COMPOSE_PROJECT}" | jq .node -r) ;
+                    echo "Node name $(echo "${nodestr}" | jq .name -r)"
+                  - >-
+                    echo "Variable var1 equal to $(echo "${SSH_COMPOSE_PROJECT}" | jq .var1 -r)"
