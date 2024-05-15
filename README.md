@@ -1,6 +1,6 @@
 # SSH Compose
 
-**ssh-compose** is the system of the **lxd-compose** project and supplies a way to deploy a complex environment
+**ssh-compose** is the sister of the **lxd-compose** project and supplies a way to deploy a complex environment
 using SSH protocol.
 
 It permits to organize and trace all configuration steps of infrastructure and create test suites.
@@ -98,6 +98,8 @@ $> ssh-compose apply --disable-flag foo
 $> ssh-compose apply --enable-flag foo
 
 ```
+
+A stupid example of a project is [here](https://raw.githubusercontent.com/MottainaiCI/ssh-compose/master/contrib/envs/example.yaml).
 
 ### Enter in the shell of the remote configured
 
