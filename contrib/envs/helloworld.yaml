@@ -1,0 +1,24 @@
+version: "1"
+
+template_engine:
+  engine: "mottainai"
+
+projects:
+  - name: "ssh-compose-helloword"
+    description: |-
+      SSH Compose Helloworkd
+
+    groups:
+      - name: group1
+        description: "Group Nodes 1"
+
+        nodes:
+          - name: node1
+            endpoint: test
+
+            hooks:
+              - event: pre-node-sync
+                flags:
+                  - flag1
+                commands:
+                  - echo "Welcome to ssh-compose-${SSH_COMPOSE_VERSION}!!!"

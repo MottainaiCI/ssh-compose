@@ -101,6 +101,16 @@ $> ssh-compose apply --enable-flag foo
 
 A stupid example of a project is [here](https://raw.githubusercontent.com/MottainaiCI/ssh-compose/master/contrib/envs/example.yaml).
 
+Hereinafter, an example of the *apply* output:
+
+```bash
+$> ssh-compose a ssh-compose-helloword
+Apply project ssh-compose-helloword
+>>> [node1] - echo "Welcome to ssh-compose-${SSH_COMPOSE_VERSION}!!!" - ☕ 
+Welcome to ssh-compose-0.0.1!!!
+All done.
+```
+
 ### Enter in the shell of the remote configured
 
 ```bash
