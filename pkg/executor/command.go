@@ -6,10 +6,10 @@ package executor
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"sort"
 	"strings"
 
 	helpers "github.com/MottainaiCI/ssh-compose/pkg/helpers"
@@ -48,22 +48,14 @@ func (e *SshCExecutor) RunCommandWithOutput(nodeName, command string, envs map[s
 			fmt.Sprintf(">>> [%s] - %s - :coffee:", nodeName, command))))
 
 	if len(envs) > 0 {
-		keys := []string{}
-		sshcproject := ""
 
-		for k, _ := range envs {
-			keys = append(keys, k)
+		data, err := json.Marshal(envs)
+		if err != nil {
+			return 1, fmt.Errorf("error on convert envs map to string: %s",
+				err.Error())
 		}
 
-		sort.Strings(keys)
-		for i, k := range keys {
-			v, _ := envs[k]
-			sshcproject += fmt.Sprintf("\"%s\": \"%s\"", k, v)
-			if i < len(keys)-1 {
-				sshcproject += ","
-			}
-		}
-
+		sshcproject := string(data)
 		_ = session.Setenv("SSH_COMPOSE_PROJECT", sshcproject)
 		_ = session.Setenv("SSH_COMPOSE_VERSION", specs.SSH_COMPOSE_VERSION)
 	}
