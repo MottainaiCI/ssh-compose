@@ -5,6 +5,8 @@ See AUTHORS and LICENSE for the license details and contributors.
 package executor
 
 import (
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
@@ -89,7 +91,7 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 		ans.Pass = r.Pass
 	} else {
 		ans.PrivateKeyPass = r.PrivateKeyPass
-		// TODO: manage password and read file
+
 		if r.PrivateKeyFile != "" {
 			data, err := os.ReadFile(r.PrivateKeyFile)
 			if err != nil {
@@ -100,8 +102,87 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 		} else {
 			ans.PrivateKey = r.PrivateKeyRaw
 		}
+
 	}
 	return ans, nil
+}
+
+func (s *SshCExecutor) getSigner() (ssh.Signer, error) {
+	var err error
+	var signer ssh.Signer
+
+	// Analyze key to check is valid and/or encrypted.
+	pemblock, _ := pem.Decode([]byte(s.PrivateKey))
+	if pemblock == nil {
+		return nil, fmt.Errorf("Pem decode failed, no key found")
+	}
+
+	// Check if the key is encrypted.
+	// NOTE: IsEncryptedPEMBlock and DecryptPEMBlock are deprecated
+	//       in go. This code must be reviewed.
+	if x509.IsEncryptedPEMBlock(pemblock) {
+		if s.PrivateKeyPass == "" {
+			return nil, fmt.Errorf("Found private key encrypted but no password defined.")
+		}
+
+		// decrypt PEM
+		pemblock.Bytes, err = x509.DecryptPEMBlock(pemblock,
+			[]byte(s.PrivateKeyPass))
+		if err != nil {
+			return nil, fmt.Errorf("error on decrypting PEM: %s", err.Error())
+		}
+
+		switch pemblock.Type {
+		case "RSA PRIVATE KEY":
+			key, err := x509.ParsePKCS1PrivateKey(pemblock.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("Parsing PKCS private key failed %v", err)
+			}
+			// generate signer instance from key
+			signer, err = ssh.NewSignerFromKey(key)
+
+		case "EC PRIVATE KEY":
+			key, err := x509.ParseECPrivateKey(pemblock.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("Parsing EC private key failed %v", err)
+			}
+
+			// generate signer instance from key
+			signer, err = ssh.NewSignerFromKey(key)
+			/*
+				convert key to PEM decoded:
+				privkeyBytes, _ := x509.MarshalECPrivateKey(key)
+				s.PrivateKey = string(pem.EncodeToMemory(
+					&pem.Block{
+						Type:  "EC PRIVATE KEY",
+						Bytes: privkeyBytes,
+					},
+				))
+			*/
+
+		case "DSA PRIVATE KEY":
+			key, err := ssh.ParseDSAPrivateKey(pemblock.Bytes)
+			if err != nil {
+				return nil, fmt.Errorf("Parsing DSA private key failed %v", err)
+			}
+			signer, err = ssh.NewSignerFromKey(key)
+		default:
+			return nil, fmt.Errorf("Parsing private key failed, unsupported key type %q", pemblock.Type)
+		}
+	} else {
+		// OPENSSH are not detected as PEM encrypted.
+		if s.PrivateKeyPass == "" {
+			signer, err = ssh.ParsePrivateKey([]byte(s.PrivateKey))
+		} else {
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(
+				[]byte(s.PrivateKey),
+				[]byte(s.PrivateKeyPass),
+			)
+		}
+
+	}
+
+	return signer, err
 }
 
 func (s *SshCExecutor) sshInteractive(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
@@ -146,15 +227,11 @@ func (s *SshCExecutor) Setup() error {
 
 	if s.Pass != "" {
 		conf.Auth = []ssh.AuthMethod{
-			ssh.KeyboardInteractive(s.sshInteractive),
+			ssh.Password(s.Pass),
+			//ssh.KeyboardInteractive(s.sshInteractive),
 		}
 	} else {
-
-		if s.PrivateKeyPass != "" {
-			return fmt.Errorf("Ssh private key with password not yet implemented")
-		}
-
-		signer, err := ssh.ParsePrivateKey([]byte(s.PrivateKey))
+		signer, err := s.getSigner()
 		if err != nil {
 			return err
 		}
