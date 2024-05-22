@@ -15,7 +15,7 @@ Incoming...
 
 ## TODO for the first release
 
-- [ ] Integrate SFTP sync
+- [x] Integrate SFTP sync
 - [x] Complete support of Private Key with Password
 - [ ] Cleanup logging
 - [ ] CD/CI integration
