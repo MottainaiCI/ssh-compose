@@ -5,6 +5,7 @@ See AUTHORS and LICENSE for the license details and contributors.
 package loader
 
 import (
+	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
 	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 )
@@ -20,6 +21,8 @@ type SshCInstance struct {
 	GroupsDisabled []string
 
 	Remotes *specs.RemotesConfig
+
+	executorMap map[string]*ssh_executor.SshCExecutor
 }
 
 func NewSshCInstance(config *specs.SshComposeConfig) (*SshCInstance, error) {
@@ -28,6 +31,7 @@ func NewSshCInstance(config *specs.SshComposeConfig) (*SshCInstance, error) {
 		Config:       config,
 		Logger:       log.NewSshCLogger(config),
 		Environments: make([]specs.SshCEnvironment, 0),
+		executorMap:  make(map[string]*ssh_executor.SshCExecutor, 0),
 	}
 
 	// Initialize logging

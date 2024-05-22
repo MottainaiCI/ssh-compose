@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
+	"strings"
 
 	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
@@ -94,18 +95,56 @@ func (i *SshCInstance) ApplyProject(projectName string) error {
 	return nil
 }
 
+func (i *SshCInstance) cleanupExecutorMap() {
+	if len(i.executorMap) > 0 {
+		for _, executor := range i.executorMap {
+			executor.Close()
+		}
+
+		i.executorMap = make(map[string]*ssh_executor.SshCExecutor, 0)
+	}
+}
+
+func (i *SshCInstance) getExecutor(node, endpoint string) (*ssh_executor.SshCExecutor, error) {
+	ans, ok := i.executorMap[node]
+
+	if ok {
+		return ans, nil
+	}
+
+	// Retrieve the node from remotes
+	if !i.Remotes.HasRemote(endpoint) {
+		return nil, fmt.Errorf(
+			"error on retrieve the remote with name %s for node %s",
+			endpoint, node)
+	}
+
+	remote := i.Remotes.GetRemote(endpoint)
+	executor, err := ssh_executor.NewSshCExecutorFromRemote(endpoint, remote)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error on create executor from remote %s (node %s): %s",
+			endpoint, node, err.Error())
+	}
+	err = executor.Setup()
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error on setup executor for node %s: %s",
+			node, err.Error())
+	}
+	executor.ConfigDir, _ = i.Remotes.GetAbsConfigDir()
+
+	i.executorMap[node] = executor
+
+	return executor, nil
+}
+
 func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCProject, group *specs.SshCGroup, targetNode *specs.SshCNode) error {
 	var res int
 	nodes := []specs.SshCNode{}
 	storeVar := false
 
-	executorMap := make(map[string]*ssh_executor.SshCExecutor, 0)
 	cleanUp := func() {
-		if len(executorMap) > 0 {
-			for _, executor := range executorMap {
-				executor.Close()
-			}
-		}
 	}
 	defer cleanUp()
 
@@ -124,11 +163,9 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 			}
 
 			if node != "host" {
-
-				var grp *specs.SshCGroup = nil
 				var nodeEntity *specs.SshCNode = nil
 
-				_, _, grp, nodeEntity = i.GetEntitiesByNodeName(node)
+				_, _, _, nodeEntity = i.GetEntitiesByNodeName(node)
 				if nodeEntity != nil {
 					json, err := nodeEntity.ToJson()
 					if err != nil {
@@ -142,64 +179,13 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 						}
 					}
 
-					if _, ok := executorMap[node]; !ok {
-
-						// Retrieve the node from remotes
-						if !i.Remotes.HasRemote(nodeEntity.Endpoint) {
-							return fmt.Errorf(
-								"error on retrieve the remote with name %s for node %s",
-								nodeEntity.Endpoint, node)
-						}
-
-						remote := i.Remotes.GetRemote(nodeEntity.Endpoint)
-						executor, err = ssh_executor.NewSshCExecutorFromRemote(nodeEntity.Endpoint, remote)
-						if err != nil {
-							return fmt.Errorf(
-								"error on create executor from remote %s (node %s): %s",
-								nodeEntity.Endpoint, node, err.Error())
-						}
-						err = executor.Setup()
-						if err != nil {
-							return fmt.Errorf(
-								"error on setup executor for node %s: %s",
-								node, err.Error())
-						}
-						executor.ConfigDir, _ = i.Remotes.GetAbsConfigDir()
-
-						executorMap[node] = executor
-					} else {
-
-						// Retrieve the node from remotes
-						if !i.Remotes.HasRemote(nodeEntity.Endpoint) {
-							return fmt.Errorf(
-								"error on retrieve the remote with name %s for node %s",
-								nodeEntity.Endpoint, node)
-						}
-
-						remote := i.Remotes.GetRemote(nodeEntity.Endpoint)
-						if group == nil && grp == nil {
-							return errors.New(fmt.Sprintf(
-								"Error on retrieve node information for %s and hook %v",
-								node, h))
-						}
-
-						executor, err = ssh_executor.NewSshCExecutorFromRemote(nodeEntity.Endpoint, remote)
-						if err != nil {
-							return fmt.Errorf(
-								"error on create executor from remote %s (node %s): %s",
-								nodeEntity.Endpoint, node, err.Error())
-						}
-						err = executor.Setup()
-						if err != nil {
-							return fmt.Errorf(
-								"error on setup executor for node %s: %s",
-								node, err.Error())
-						}
-						executor.ConfigDir, _ = i.Remotes.GetAbsConfigDir()
-						defer executor.Close()
+					executor, err = i.getExecutor(node, nodeEntity.Endpoint)
+					if err != nil {
+						return err
 					}
+
 				} else {
-					executor = executorMap[node]
+					return fmt.Errorf("error on retrieve executor of the node %s", node)
 				}
 
 			} else {
@@ -241,8 +227,7 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 			} else {
 
 				if storeVar {
-					return fmt.Errorf("Command with var not yet implemented")
-					// res, err = executor.RunCommandWithOutput4Var(node, cmds, h.Out2Var, h.Err2Var, &envs, h.Entrypoint)
+					res, err = executor.RunCommandWithOutput4Var(node, cmds, h.Out2Var, h.Err2Var, &envs, h.Entrypoint)
 				} else {
 					if i.Config.GetLogging().RuntimeCmdsOutput {
 						emitter := executor.GetEmitter()
@@ -369,6 +354,8 @@ func (i *SshCInstance) ApplyGroup(group *specs.SshCGroup, proj *specs.SshCProjec
 		return err
 	}
 
+	defer i.cleanupExecutorMap()
+
 	// TODO: implement parallel creation
 	for _, node := range group.Nodes {
 
@@ -404,6 +391,20 @@ func (i *SshCInstance) ApplyGroup(group *specs.SshCGroup, proj *specs.SshCProjec
 				syncSourceDir = envBaseAbs
 			}
 
+			executor, err := i.getExecutor(node.GetName(), node.Endpoint)
+			if err != nil {
+				i.Logger.Error("Error on retrieve executor of the node " +
+					node.GetName() + ": " + err.Error())
+				return err
+			}
+			// TODO: propagate sftp client options
+			err = executor.SetupSftp()
+			if err != nil {
+				i.Logger.Error("Error on setup sftp client on executor of the node " +
+					node.GetName() + ": " + err.Error())
+				return err
+			}
+
 			i.Logger.Debug(i.Logger.Aurora.Bold(
 				i.Logger.Aurora.BrightCyan(
 					">>> [" + node.GetName() + "] Using sync source basedir " +
@@ -416,17 +417,15 @@ func (i *SshCInstance) ApplyGroup(group *specs.SshCGroup, proj *specs.SshCProjec
 						fmt.Sprintf(">>> [%s] Syncing %d resources... - :bus:",
 							node.GetName(), nResources))))
 
-			for _, resource := range node.SyncResources {
+			for idx, resource := range node.SyncResources {
 
-				/*
-					var sourcePath string
+				var sourcePath string
 
-					if filepath.IsAbs(resource.Source) {
-						sourcePath = resource.Source
-					} else {
-						sourcePath = filepath.Join(syncSourceDir, resource.Source)
-					}
-				*/
+				if filepath.IsAbs(resource.Source) {
+					sourcePath = resource.Source
+				} else {
+					sourcePath = filepath.Join(syncSourceDir, resource.Source)
+				}
 
 				i.Logger.DebugC(
 					i.Logger.Aurora.Italic(
@@ -435,21 +434,26 @@ func (i *SshCInstance) ApplyGroup(group *specs.SshCGroup, proj *specs.SshCProjec
 								node.GetName(), resource.Source,
 								resource.Destination))))
 
-				/*
-					err = executor.RecursivePushFile(node.GetName(),
-						sourcePath, resource.Destination)
-					if err != nil {
-						i.Logger.Debug("Error on sync from sourcePath " + sourcePath +
-							" to dest " + resource.Destination)
-						i.Logger.Error("Error on sync " + resource.Source + ": " + err.Error())
-						return err
-					}
+				// TODO: Propagate this options from config
+				ensurePerms := false
 
-					i.Logger.InfoC(
-						i.Logger.Aurora.BrightCyan(
-							fmt.Sprintf(">>> [%s] - [%2d/%2d] %s - :check_mark:",
-								node.GetName(), idx+1, nResources, resource.Destination)))
-				*/
+				if strings.HasSuffix(resource.Source, "/") {
+					sourcePath += "/"
+				}
+
+				err = executor.RecursivePushFile(node.GetName(),
+					sourcePath, resource.Destination, ensurePerms)
+				if err != nil {
+					i.Logger.Debug("Error on sync from sourcePath " + sourcePath +
+						" to dest " + resource.Destination)
+					i.Logger.Error("Error on sync " + resource.Source + ": " + err.Error())
+					return err
+				}
+
+				i.Logger.InfoC(
+					i.Logger.Aurora.BrightCyan(
+						fmt.Sprintf(">>> [%s] - [%2d/%2d] %s - :check_mark:",
+							node.GetName(), idx+1, nResources, resource.Destination)))
 			}
 
 		}

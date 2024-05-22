@@ -248,8 +248,10 @@ func (s *SshCExecutor) Setup() error {
 }
 
 func (s *SshCExecutor) SetupSftp(opts ...sftp.ClientOption) error {
+	var client *sftp.Client
+	var err error
 	if s.SftpClient == nil {
-		client, err := sftp.NewClient(s.Client, opts...)
+		client, err = sftp.NewClient(s.Client, opts...)
 		if err != nil {
 			return err
 		}
