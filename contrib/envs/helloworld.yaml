@@ -22,6 +22,10 @@ projects:
           - name: node-example
             endpoint: test
 
+            sync_resources:
+              - source: ../../contrib/
+                dst: /root/
+
             hooks:
               - event: pre-node-sync
                 flags:
