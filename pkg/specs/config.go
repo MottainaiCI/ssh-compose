@@ -30,8 +30,9 @@ type SshComposeConfig struct {
 }
 
 type SshCGeneral struct {
-	Debug          bool   `mapstructure:"debug,omitempty" json:"debug,omitempty" yaml:"debug,omitempty"`
-	RemotesConfDir string `mapstructure:"remotes_confdir,omitempty" json:"remotes_confdir,omitempty" yaml:"remotes_confdir,omitempty"`
+	Debug            bool   `mapstructure:"debug,omitempty" json:"debug,omitempty" yaml:"debug,omitempty"`
+	RemotesConfDir   string `mapstructure:"remotes_confdir,omitempty" json:"remotes_confdir,omitempty" yaml:"remotes_confdir,omitempty"`
+	EnvSessionPrefix string `mapstructure:"env_session_prefix,omitempty" json:"env_session_prefix,omitempty" yaml:"env_session_prefix,omitempty"`
 }
 
 type SshCLogging struct {
@@ -147,6 +148,7 @@ func (c *SshComposeConfig) SetRenderEnvs(envs []string) error {
 
 func GenDefault(viper *v.Viper) {
 	viper.SetDefault("general.debug", false)
+	viper.SetDefault("general.env_session_prefix", "SSH_COMPOSE")
 	viper.SetDefault("render_default_file", "")
 	viper.SetDefault("render_values_file", "")
 	viper.SetDefault("render_templates_dirs", []string{})

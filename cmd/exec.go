@@ -61,7 +61,9 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 			}
 
 			if !withoutEnvs {
-				err = session.Setenv("SSH_COMPOSE_VERSION", specs.SSH_COMPOSE_VERSION)
+				err = session.Setenv(fmt.Sprintf("%s_VERSION",
+					config.GetGeneral().EnvSessionPrefix),
+					specs.SSH_COMPOSE_VERSION)
 				if err != nil {
 					fmt.Println("ERR on set env", err.Error())
 				}

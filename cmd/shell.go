@@ -80,7 +80,9 @@ func NewShellCommand(config *specs.SshComposeConfig) *cobra.Command {
 			defer restoreTermCb()
 
 			if !withoutEnvs {
-				err = session.Setenv("SSH_COMPOSE_VERSION", specs.SSH_COMPOSE_VERSION)
+				err = session.Setenv(fmt.Sprintf(
+					"%s_VERSION", config.GetGeneral().EnvSessionPrefix),
+					specs.SSH_COMPOSE_VERSION)
 				if err != nil {
 					fmt.Println("ERR on set env", err.Error())
 				}
@@ -129,7 +131,9 @@ func NewShellCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 	pflags := cmd.Flags()
 	pflags.Bool("without-envs", false,
-		"Avoid to set variables on session (ex SSH_COMPOSE_VERSION, etc.)")
+		fmt.Sprintf("Avoid to set variables on session (ex %s_VERSION, etc.)",
+			config.GetGeneral().EnvSessionPrefix),
+	)
 	pflags.StringSliceVar(&envs, "env", []string{},
 		"Append environments in the format key=value\n(Only variables defined on AcceptEnv param of sshd are admitted)")
 

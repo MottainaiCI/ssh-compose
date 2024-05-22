@@ -55,9 +55,11 @@ func (e *SshCExecutor) RunCommandWithOutput(nodeName, command string, envs map[s
 				err.Error())
 		}
 
+		envprefix := logger.Config.GetGeneral().EnvSessionPrefix
+
 		sshcproject := string(data)
-		_ = session.Setenv("SSH_COMPOSE_PROJECT", sshcproject)
-		_ = session.Setenv("SSH_COMPOSE_VERSION", specs.SSH_COMPOSE_VERSION)
+		_ = session.Setenv(fmt.Sprintf("%s_PROJECT", envprefix), sshcproject)
+		_ = session.Setenv(fmt.Sprintf("%s_VERSION", envprefix), specs.SSH_COMPOSE_VERSION)
 	}
 
 	// Disable stdin
