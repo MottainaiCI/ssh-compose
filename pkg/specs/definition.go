@@ -37,6 +37,10 @@ type SshCHook struct {
 	Entrypoint []string `json:"entrypoint,omitempty" yaml:"entrypoint,omitempty"`
 	Flags      []string `json:"flags,omitempty" yaml:"flags,omitempty"`
 	Disable    bool     `json:"disable,omitempty" yaml:"disable,omitempty"`
+
+	// Pull resources
+	PullResources      []*SshCSyncResource `json:"pull,omitempty" yaml:"pull,omitempty"`
+	PullKeepSourcePath bool                `json:"pull_keep_sourcepath,omitempty" yaml:"pull_keep_sourcepath,omitempty"`
 }
 
 type SshCHooks struct {

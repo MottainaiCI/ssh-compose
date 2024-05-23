@@ -54,6 +54,7 @@ func NewSshCInstance(config *specs.SshComposeConfig) (*SshCInstance, error) {
 	return ans, err
 }
 
+func (i *SshCInstance) GetLogger() *log.SshCLogger        { return i.Logger }
 func (i *SshCInstance) GetRemotes() *specs.RemotesConfig  { return i.Remotes }
 func (i *SshCInstance) SetRemotes(r *specs.RemotesConfig) { i.Remotes = r }
 

@@ -65,6 +65,13 @@ func (h *SshCHook) SetNode(node string) {
 	h.Node = node
 }
 
+func (h *SshCHook) HasPullResources() bool {
+	if len(h.PullResources) > 0 {
+		return true
+	}
+	return false
+}
+
 func (h *SshCHook) ToProcess(enabledFlags, disabledFlags []string) bool {
 	ans := false
 
