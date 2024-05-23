@@ -18,9 +18,9 @@ var _ = Describe("", func() {
 
 	Context("Template1", func() {
 
-		proj := &specs.LxdCProject{
+		proj := &specs.SshCProject{
 			Name: "project1",
-			Environments: []specs.LxdCEnvVars{
+			Environments: []specs.SshCEnvVars{
 				{
 					EnvVars: map[string]interface{}{
 						"key1": "value1",
