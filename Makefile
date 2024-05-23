@@ -39,10 +39,10 @@ clean:
 deps:
 	go env
 	# Installing dependencies...
-	go get golang.org/x/lint/golint
-	go get github.com/mitchellh/gox
+	#go get golang.org/x/lint/golint
+	#go get github.com/mitchellh/gox
 	go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo
-	go get github.com/onsi/gomega/...
+	#go get github.com/onsi/gomega/...
 	ginkgo version
 
 .PHONY: build
