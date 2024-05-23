@@ -98,6 +98,7 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 	var targetIsFile bool = true
 	var sourceIsFile bool = true
 	var uid, gid int
+	var mode os.FileMode
 
 	if strings.HasSuffix(source, "/") {
 		sourceIsFile = false
@@ -115,17 +116,16 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 	}
 	sourceLen := len(sourceDir)
 
-	// TODO: Determine the file mode of the source directory
-	mode := os.FileMode(0755)
-
 	fi, err := os.Stat(sourceDir)
 	if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
 		uid = int(stat.Uid)
 		gid = int(stat.Gid)
+		mode = fi.Mode().Perm()
 	} else {
 		// Using os uid/gid
 		uid = os.Getuid()
 		gid = os.Getgid()
+		mode = os.FileMode(0755)
 	}
 	err = s.RecursiveMkdir(dir, &mode, uid, gid, ensurePerms)
 	if err != nil {
@@ -234,4 +234,126 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 	}
 
 	return filepath.Walk(source, sendFile)
+}
+
+func (s *SshCExecutor) RecursivePullFile(nodeName, sourcePath, targetPath string, localAsTarget, ensurePerms bool) error {
+	var err error
+	var ftype string
+	var uid, gid int
+	var mode os.FileMode
+
+	// Retrieve the information of the remote source directory
+	fi, err := s.SftpClient.Stat(sourcePath)
+	if err != nil {
+		return err
+	}
+
+	ftype = "file"
+	if fi.IsDir() {
+		ftype = "directory"
+	} else if fi.Mode()&os.ModeSymlink != 0 {
+		ftype = "symlink"
+	}
+	mode = fi.Mode()
+	if ensurePerms {
+		if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
+			uid = int(stat.Uid)
+			gid = int(stat.Gid)
+		} else {
+			// Using os uid/gid
+			uid = os.Getuid()
+			gid = os.Getgid()
+		}
+	} else {
+		uid = os.Getuid()
+		gid = os.Getgid()
+	}
+
+	var target string
+	// Default logic is to append tree to target directory
+	if localAsTarget {
+		target = targetPath
+	} else {
+		target = filepath.Join(targetPath, sourcePath)
+	}
+
+	logger := log.GetDefaultLogger()
+	if logger.Config.GetGeneral().Debug {
+		s.Emitter.InfoLog(true,
+			logger.Aurora.Italic(
+				fmt.Sprintf(">>> [%s] Pulling %s -> %s (%s) (%v) - (%s)",
+					nodeName, sourcePath, targetPath, target, localAsTarget, ftype)))
+	}
+
+	if ftype == "directory" {
+
+		err := os.MkdirAll(target, mode)
+		if err != nil {
+			s.Emitter.InfoLog(false, fmt.Sprintf("directory %s is already present. Nothing to do.\n", target))
+		}
+
+		if ensurePerms {
+			err = os.Chown(target, uid, gid)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Retrieve the list of the entries of the source directory
+		entries, err := s.SftpClient.ReadDir(sourcePath)
+		if err != nil {
+			return err
+		}
+
+		for _, ent := range entries {
+			nextP := path.Join(sourcePath, ent.Name())
+			nextT := path.Join(target, ent.Name())
+			err = s.RecursivePullFile(nodeName, nextP, nextT, true, ensurePerms)
+			if err != nil {
+				return err
+			}
+		}
+	} else if ftype == "file" {
+
+		// Open the local file
+		f, err := os.Create(target)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+
+		err = os.Chmod(target, mode)
+		if err != nil {
+			return err
+		}
+
+		// open the remote source file
+		sfile, err := s.SftpClient.Open(sourcePath)
+		if err != nil {
+			return err
+		}
+		defer sfile.Close()
+
+		_, err = io.Copy(f, sfile)
+		if err != nil {
+			s.Emitter.ErrorLog(false, fmt.Sprintf("Error on pull file %s", target))
+			return err
+		}
+
+	} else if ftype == "symlink" {
+		// Read fileinfo of the link
+		fiLink, err := s.SftpClient.Lstat(sourcePath)
+		if err != nil {
+			return err
+		}
+
+		err = os.Symlink(fiLink.Name(), target)
+		if err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("Unknown file type '%s'", ftype)
+	}
+
+	return nil
 }

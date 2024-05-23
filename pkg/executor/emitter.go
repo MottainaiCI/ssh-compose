@@ -6,7 +6,6 @@ package executor
 
 import (
 	"io"
-	//"fmt"
 
 	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 )
