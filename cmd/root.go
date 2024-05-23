@@ -78,6 +78,7 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 		newRemoteCommand(config),
 		newGroupCommand(config),
 		newApplyCommand(config),
+		newFileCommand(config),
 	)
 }
 
