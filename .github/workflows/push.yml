@@ -17,6 +17,11 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
+      - name: Get Golang Version
+        id: goversion
+        run: |
+          echo "GOVERSION=$(go env GOVERSION)" >> $GITHUB_ENV
+
       - name: Checkout code
         uses: actions/checkout@v3
 
