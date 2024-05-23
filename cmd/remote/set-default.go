@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 
+	loader "github.com/MottainaiCI/ssh-compose/pkg/loader"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 
 	"github.com/spf13/cobra"
@@ -27,17 +28,18 @@ func NewSetDefaultCommand(config *specs.SshComposeConfig) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			remoteName := args[0]
 
-			remotes, err := specs.LoadRemotesConfig(
-				config.GetGeneral().RemotesConfDir,
-			)
+			// Create Instance
+			composer, err := loader.NewSshCInstance(config)
 			if err != nil {
-				fmt.Println("Error:", err.Error())
+				fmt.Println("Error on setup sshc instance:" + err.Error() + "\n")
 				os.Exit(1)
 			}
 
+			remotes := composer.GetRemotes()
+			logger := composer.GetLogger()
+
 			if !remotes.HasRemote(remoteName) {
-				fmt.Println(fmt.Sprintf("Remote %s not present.", remoteName))
-				os.Exit(1)
+				logger.Fatal(fmt.Sprintf("Remote %s not present.", remoteName))
 			}
 
 			remotes.SetDefault(remoteName)
@@ -45,11 +47,10 @@ func NewSetDefaultCommand(config *specs.SshComposeConfig) *cobra.Command {
 			// Write config
 			err = remotes.Write()
 			if err != nil {
-				fmt.Println("error on update remote config file:", err.Error())
-				os.Exit(1)
+				logger.Fatal("error on update remote config file:", err.Error())
 			}
 
-			fmt.Println(fmt.Sprintf("Remote %s set as default.", remoteName))
+			logger.InfoC(fmt.Sprintf(":tada: Remote %s set as default.", remoteName))
 		},
 	}
 

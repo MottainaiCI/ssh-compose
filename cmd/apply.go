@@ -42,17 +42,17 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 				os.Exit(1)
 			}
 
+			logger := composer.GetLogger()
+
 			// We need set this before loading phase
 			err = config.SetRenderEnvs(renderEnvs)
 			if err != nil {
-				fmt.Println(err.Error())
-				os.Exit(1)
+				logger.Fatal("Error on render specs: " + err.Error() + "\n")
 			}
 
 			err = composer.LoadEnvironments()
 			if err != nil {
-				fmt.Println("Error on load environments:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on load environments:" + err.Error() + "\n")
 			}
 
 			skipSync, _ := cmd.Flags().GetBool("skip-sync")
@@ -67,22 +67,21 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			for _, proj := range projects {
 
-				fmt.Println("Apply project " + proj)
+				logger.InfoC(
+					logger.Aurora.Bold(fmt.Sprintf(">>> Applying project :right_arrow:%s :rocket:", proj)))
 
 				env := composer.GetEnvByProjectName(proj)
 				if env == nil {
-					fmt.Println("Project " + proj + " not found")
-					os.Exit(1)
+					logger.Fatal("Project " + proj + " not found")
 				}
 
 				pObj := env.GetProjectByName(proj)
 				for _, varFile := range varsFiles {
 					err := pObj.LoadEnvVarsFile(varFile)
 					if err != nil {
-						fmt.Println(fmt.Sprintf(
+						logger.Fatal(fmt.Sprintf(
 							"Error on load additional envs var file %s: %s",
 							varFile, err.Error()))
-						os.Exit(1)
 					}
 				}
 
@@ -92,8 +91,7 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 					for _, e := range envs {
 						err := evars.AddKVAggregated(e)
 						if err != nil {
-							fmt.Println(err)
-							os.Exit(1)
+							logger.Fatal(err.Error())
 						}
 					}
 
@@ -102,13 +100,13 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 				err = composer.ApplyProject(proj)
 				if err != nil {
-					fmt.Println("Error on apply project " + proj + ": " + err.Error())
+					logger.Fatal("Error on apply project " + proj + ": " + err.Error())
 					os.Exit(1)
 				}
 
 			}
 
-			fmt.Println("All done.")
+			logger.InfoC(":tada:All done!")
 		},
 	}
 

@@ -34,10 +34,12 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 				fmt.Println("Error on setup sshc instance:" + err.Error() + "\n")
 				os.Exit(1)
 			}
+
+			logger := composer.GetLogger()
+
 			err = composer.LoadEnvironments()
 			if err != nil {
-				fmt.Println("Error on load environments:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on load environments:" + err.Error() + "\n")
 			}
 
 			for _, e := range *composer.GetEnvironments() {
@@ -57,8 +59,7 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 				data, err := json.Marshal(projects)
 				if err != nil {
-					fmt.Println("Error on decode projects ", err.Error())
-					os.Exit(1)
+					logger.Fatal("Error on decode projects ", err.Error())
 				}
 				fmt.Println(string(data))
 

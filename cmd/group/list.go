@@ -40,17 +40,17 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 				os.Exit(1)
 			}
 
+			logger := composer.GetLogger()
+
 			err = composer.LoadEnvironments()
 			if err != nil {
-				fmt.Println("Error on load environments:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on load environments:" + err.Error() + "\n")
 			}
 
 			project := args[0]
 			env := composer.GetEnvByProjectName(project)
 			if env == nil {
-				fmt.Println("Project not found")
-				os.Exit(1)
+				logger.Fatal("Project not found")
 			}
 
 			proj := env.GetProjectByName(project)

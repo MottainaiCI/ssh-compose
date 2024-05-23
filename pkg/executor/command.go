@@ -43,9 +43,10 @@ func (e *SshCExecutor) RunCommandWithOutput(nodeName, command string, envs map[s
 				fmt.Sprintf(">>> [%s] - entrypoint: %s", nodeName, entryPoint))))
 	}
 
-	e.Emitter.InfoLog(true, logger.Aurora.Italic(
-		logger.Aurora.BrightCyan(
-			fmt.Sprintf(">>> [%s] - %s - :coffee:", nodeName, command))))
+	e.Emitter.InfoLog(true, logger.Aurora.Bold(
+		logger.Aurora.Italic(
+			logger.Aurora.BrightCyan(
+				fmt.Sprintf(">>> [%s] - %s - :coffee:", nodeName, command)))))
 
 	if len(envs) > 0 {
 

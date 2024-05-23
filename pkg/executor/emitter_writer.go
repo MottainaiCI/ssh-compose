@@ -20,11 +20,7 @@ func (e *SshCEmitterWriter) Write(p []byte) (int, error) {
 	logger := log.GetDefaultLogger()
 	switch e.Type {
 	case "ssh_stdout":
-		logger.Msg("info", false, false,
-			logger.Aurora.Bold(
-				logger.Aurora.BrightCyan(string(p)),
-			),
-		)
+		logger.Msg("info", true, false, string(p))
 	case "host_stdout":
 		logger.Msg("info", false, false,
 			logger.Aurora.Bold(
@@ -33,10 +29,7 @@ func (e *SshCEmitterWriter) Write(p []byte) (int, error) {
 		)
 	case "host_stderr", "ssh_stderr":
 		logger.Msg("info", false, false,
-			logger.Aurora.Bold(
-				logger.Aurora.BrightRed(string(p)),
-			),
-		)
+			logger.Aurora.BrightRed(string(p)))
 	}
 	return len(p), nil
 }

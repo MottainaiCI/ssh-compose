@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
+	loader "github.com/MottainaiCI/ssh-compose/pkg/loader"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 
 	"github.com/spf13/cobra"
@@ -28,36 +29,36 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			remoteName := args[0]
 
-			remotes, err := specs.LoadRemotesConfig(
-				config.GetGeneral().RemotesConfDir,
-			)
+			// Create Instance also if not really used but
+			// contains the right setup of the logger and the
+			// load of the remotes.
+			composer, err := loader.NewSshCInstance(config)
 			if err != nil {
-				fmt.Println("Error:", err.Error())
+				fmt.Println("error on setup instance", err.Error())
 				os.Exit(1)
 			}
 
+			remotes := composer.GetRemotes()
+			logger := composer.GetLogger()
+
 			if !remotes.HasRemote(remoteName) {
-				fmt.Println(fmt.Sprintf("Remote %s not found.", remoteName))
-				os.Exit(1)
+				logger.Fatal(fmt.Sprintf("Remote %s not found.", remoteName))
 			}
 			remote := remotes.GetRemote(remoteName)
 
 			executor, err := ssh_executor.NewSshCExecutorFromRemote(remoteName, remote)
 			if err != nil {
-				fmt.Println("Error on create executor:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on create executor:" + err.Error() + "\n")
 			}
 			err = executor.Setup()
 			if err != nil {
-				fmt.Println("Error on setup executor:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on setup executor:" + err.Error() + "\n")
 			}
 			defer executor.Close()
 
 			session, err := executor.GetSession("my-session")
 			if err != nil {
-				fmt.Println("Error on get session:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on get session:" + err.Error() + "\n")
 			}
 
 			if !withoutEnvs {
@@ -65,7 +66,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 					config.GetGeneral().EnvSessionPrefix),
 					specs.SSH_COMPOSE_VERSION)
 				if err != nil {
-					fmt.Println("ERR on set env", err.Error())
+					logger.Debug("Error on set version env", err.Error())
 				}
 
 				if len(envs) > 0 {
@@ -73,7 +74,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 						e := specs.NewEnvVars()
 						err := e.AddKVAggregated(env)
 						if err != nil {
-							fmt.Println(fmt.Sprintf(
+							logger.Debug(fmt.Sprintf(
 								"Invalid env variable %s: %s", env, err.Error()))
 							continue
 						}
@@ -81,7 +82,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 						for k, v := range e.EnvVars {
 							err = session.Setenv(k, v.(string))
 							if err != nil {
-								fmt.Println(fmt.Sprintf(
+								logger.Debug(fmt.Sprintf(
 									"error on set env variable %s: %s", env, err.Error()))
 								continue
 							}
@@ -98,11 +99,16 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			runArgs := strings.Join(args[1:], " ")
 
-			fmt.Println("Running: ", runArgs)
+			logger.InfoC(
+				logger.Aurora.Italic(
+					logger.Aurora.BrightCyan(
+						fmt.Sprintf(">>> [%s] - %s - :coffee:",
+							remoteName, runArgs,
+						))))
+
 			err = session.Run(runArgs)
 			if err != nil {
-				fmt.Println("error on execute command ", err.Error())
-				os.Exit(1)
+				logger.Fatal("error on execute command ", err.Error())
 			}
 		},
 	}

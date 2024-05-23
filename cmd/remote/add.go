@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MottainaiCI/ssh-compose/pkg/helpers"
+	loader "github.com/MottainaiCI/ssh-compose/pkg/loader"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 
 	"github.com/spf13/cobra"
@@ -69,25 +70,27 @@ func NewAddCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			remoteName := args[0]
 
-			remotes, err := specs.LoadRemotesConfig(
-				config.GetGeneral().RemotesConfDir,
-			)
+			// Create Instance also if not really used but
+			// contains the right setup of the logger and the
+			// load of the remotes.
+			composer, err := loader.NewSshCInstance(config)
 			if err != nil {
-				fmt.Println("Error:", err.Error())
+				fmt.Println("error on setup instance", err.Error())
 				os.Exit(1)
 			}
 
+			remotes := composer.GetRemotes()
+			logger := composer.GetLogger()
+
 			if remotes.HasRemote(remoteName) {
-				fmt.Println(fmt.Sprintf("Remote %s already present.", remoteName))
-				os.Exit(1)
+				logger.Fatal(fmt.Sprintf("Remote %s already present.", remoteName))
 			}
 
 			portNum := 22
 			if port != "" {
 				portNum, err = strconv.Atoi(port)
 				if err != nil {
-					fmt.Println("Invalid value for port")
-					os.Exit(1)
+					logger.Fatal("Invalid value for port")
 				}
 			}
 
@@ -104,24 +107,21 @@ func NewAddCommand(config *specs.SshComposeConfig) *cobra.Command {
 				if !strings.HasPrefix(file, "/") {
 					configdir, err := remotes.GetAbsConfigDir()
 					if err != nil {
-						fmt.Println("Error on retrieve abs path of the config", err.Error())
-						os.Exit(1)
+						logger.Fatal("Error on retrieve abs path of the config", err.Error())
 					}
 					file = filepath.Join(configdir, file)
 				}
 
 				if helpers.Exists(file) {
-					fmt.Println(fmt.Sprintf(
+					logger.Fatal(fmt.Sprintf(
 						"The file %s doesn't exist.", file))
-					os.Exit(1)
 				}
 
 				// Read the file
 				data, err := os.ReadFile(file)
 				if err != nil {
-					fmt.Println(fmt.Sprintf(
+					logger.Fatal(fmt.Sprintf(
 						"error on read file %s: %s", file, err.Error()))
-					os.Exit(1)
 				}
 
 				remote.SetPrivateKeyRaw(string(data))
@@ -135,11 +135,10 @@ func NewAddCommand(config *specs.SshComposeConfig) *cobra.Command {
 			// Write config
 			err = remotes.Write()
 			if err != nil {
-				fmt.Println("error on update remote config file:", err.Error())
-				os.Exit(1)
+				logger.Fatal("error on update remote config file:", err.Error())
 			}
 
-			fmt.Println(fmt.Sprintf("Remote %s created.", remoteName))
+			logger.InfoC(fmt.Sprintf(":tada: Remote %s created.", remoteName))
 		},
 	}
 

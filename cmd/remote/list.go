@@ -24,7 +24,6 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 		Short:   "List remotes availables.",
 		Run: func(cmd *cobra.Command, args []string) {
 			jsonOutput, _ := cmd.Flags().GetBool("json")
-			//search, _ := cmd.Flags().GetString("search")
 
 			// Create Instance
 			composer, err := loader.NewSshCInstance(config)
@@ -33,12 +32,13 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 				os.Exit(1)
 			}
 
+			logger := composer.GetLogger()
+
 			if jsonOutput {
 
 				data, err := json.Marshal(composer.GetRemotes())
 				if err != nil {
-					fmt.Println("Error on decode projects ", err.Error())
-					os.Exit(1)
+					logger.Fatal("Error on decode projects ", err.Error())
 				}
 				fmt.Println(string(data))
 
@@ -87,7 +87,6 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 	var flags = cmd.Flags()
 	flags.Bool("json", false, "JSON output")
-	flags.StringP("search", "s", "", "Regex filter to use with network name.")
 
 	return cmd
 }

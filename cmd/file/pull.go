@@ -42,20 +42,17 @@ func NewPullCommand(config *specs.SshComposeConfig) *cobra.Command {
 			logger := composer.GetLogger()
 
 			if !remotes.HasRemote(remoteName) {
-				fmt.Println(fmt.Sprintf("Remote %s not found.", remoteName))
-				os.Exit(1)
+				logger.Fatal(fmt.Sprintf("Remote %s not found.", remoteName))
 			}
 			remote := remotes.GetRemote(remoteName)
 
 			executor, err := ssh_executor.NewSshCExecutorFromRemote(remoteName, remote)
 			if err != nil {
-				fmt.Println("Error on create executor:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on create executor:" + err.Error() + "\n")
 			}
 			err = executor.Setup()
 			if err != nil {
-				fmt.Println("Error on setup executor:" + err.Error() + "\n")
-				os.Exit(1)
+				logger.Fatal("Error on setup executor:" + err.Error() + "\n")
 			}
 			defer executor.Close()
 
@@ -68,9 +65,8 @@ func NewPullCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			err = executor.SetupSftp()
 			if err != nil {
-				fmt.Println("Error on setup sftp client on executor of the node " +
+				logger.Fatal("Error on setup sftp client on executor of the node " +
 					remoteName + ": " + err.Error())
-				os.Exit(1)
 			}
 
 			logger.InfoC(
@@ -83,9 +79,8 @@ func NewPullCommand(config *specs.SshComposeConfig) *cobra.Command {
 			err = executor.RecursivePullFile(remoteName,
 				remotePath, localPath, localAsTarget, ensurePerms)
 			if err != nil {
-				fmt.Println("Error on pull files from " +
+				logger.Fatal("Error on pull files from " +
 					remoteName + ": " + err.Error())
-				os.Exit(1)
 			}
 
 			logger.InfoC(":tada:All done!")
