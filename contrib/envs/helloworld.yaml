@@ -38,3 +38,11 @@ projects:
                     echo "Node name $(echo "${nodestr}" | jq .name -r)"
                   - >-
                     echo "Variable var1 equal to $(echo "${SSH_COMPOSE_PROJECT}" | jq .var1 -r)"
+
+              - event: post-node-sync
+                pull:
+                  - source: /root/.ssh
+                    dst: ssh-keys
+                flags:
+                  - pull_resource
+
