@@ -13,13 +13,6 @@ It's under heavy development phase and specification could be changed in the nea
 
 Incoming...
 
-## TODO for the first release
-
-- [x] Integrate SFTP sync
-- [x] Complete support of Private Key with Password
-- [ ] Cleanup logging
-- [ ] CD/CI integration
-
 ## Getting Started
 
 The file `.ssh-compose.yml` contains the rules about `ssh-compose` reads and loads the environments and projects.
@@ -134,6 +127,22 @@ All done.
 ```bash
 
 $> ssh-compose shell node1
+
+```
+
+### Push files/directory to a remote node
+
+```bash
+
+$> ssh-compose push <remote> ./local-path/ /remote-path/
+
+```
+
+### Pull files/directory from a remote node to a local path
+
+```bash
+
+$> ssh-compose pull <remote> ./remote-path/ /local-path/
 
 ```
 
