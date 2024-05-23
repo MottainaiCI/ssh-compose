@@ -1,6 +1,6 @@
 module github.com/MottainaiCI/ssh-compose
 
-go 1.20
+go 1.22.0
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
