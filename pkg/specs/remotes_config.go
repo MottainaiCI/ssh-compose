@@ -47,6 +47,9 @@ func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
 				return ans, err
 			}
 		} else {
+			if !helpers.Exists(remotesconf) {
+				os.MkdirAll(remotesconfdir, os.ModePerm)
+			}
 			// Just initialize an empty struct if the file doesn't
 			// exist. This could be happens in the initial setup.
 			ans = NewRemotesConfig()
@@ -65,6 +68,11 @@ func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
 				return ans, err
 			}
 		} else {
+			// Create directory if not present
+			if !helpers.Exists(sshcDir) {
+				os.MkdirAll(sshcDir, os.ModePerm)
+			}
+
 			ans = NewRemotesConfig()
 			ans.File = remotesconf
 		}

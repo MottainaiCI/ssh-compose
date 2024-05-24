@@ -47,11 +47,30 @@ func initConfig(config *specs.SshComposeConfig) {
 
 }
 
-func cmdNeedConfig(cmd string) bool {
-	if cmd != "unpack" {
-		return true
+func cmdNeedConfig(cmd *cobra.Command) bool {
+	ans := true
+	commandWorksWithoutConfig := []string{
+		"shell",
+		"remote",
+		"exec",
+		"file",
 	}
-	return false
+
+	name := cmd.Name()
+	if name != "" {
+		if cmd.Parent().Name() != "" {
+			name = cmd.Parent().Name()
+		}
+	}
+
+	for _, c := range commandWorksWithoutConfig {
+		if c == name {
+			ans = false
+			break
+		}
+	}
+
+	return ans
 }
 
 func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
@@ -121,9 +140,14 @@ func Execute() {
 
 			// Parse configuration file
 			err = config.Unmarshal()
-			if err != nil && cmdNeedConfig(cmd.CalledAs()) {
-				fmt.Println(err.Error())
-				os.Exit(1)
+			if err != nil {
+				if !cmdNeedConfig(cmd) {
+					// Trying to loading defaults
+					v.Unmarshal(&config)
+				} else {
+					fmt.Println(err.Error())
+					os.Exit(1)
+				}
 			}
 		},
 	}
