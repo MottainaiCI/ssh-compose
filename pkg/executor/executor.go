@@ -228,7 +228,7 @@ func (s *SshCExecutor) Setup() error {
 	if s.Pass != "" {
 		conf.Auth = []ssh.AuthMethod{
 			ssh.Password(s.Pass),
-			//ssh.KeyboardInteractive(s.sshInteractive),
+			ssh.KeyboardInteractive(s.sshInteractive),
 		}
 	} else {
 		signer, err := s.getSigner()
