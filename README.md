@@ -108,7 +108,7 @@ AcceptEnv SSH_COMPOSE_*
 
 The `SSH_COMPOSE` prefix could be replaced with a custom value defined in the `.ssh-compose.yml` file.
 
-### A simple example
+## A simple example
 
 Considering a simple example where I want to upgrade the Ubuntu and Macaroni OS nodes
 and configure a specific Nginx installation, these are the steps to follow.
@@ -146,9 +146,6 @@ $> mkdir -p ./remotes ./envs/hooks ./envs/vars ./render/templates
 ```
 
 3. Setup remotes `config.yml`
-
-NOTE: At the moment, the config.yml must be already initialized but ssh-compose will
-support soon also the init setup correctly. See #2.
 
 ```bash
 $> ssh-compose remote add --auth-method password --host 10.10.10.10 \
@@ -292,7 +289,7 @@ $> ssh-compose project list
 In the example I report only a part of the output.
 
 ```bash
-# ssh-compose a nginx-servers
+$> ssh-compose a nginx-servers
 >>> Applying project ➡ nginx-servers 🚀 
 >>> [nginx1] - anise repo update && anise upgrade -y - ☕ 
 ℹ️  Repository:              geaaru-repo-index is already up to date.
@@ -315,6 +312,8 @@ In the example I report only a part of the output.
 
 Enjoy!
 
+
+## Available commands
 
 ### Add a new remote
 
