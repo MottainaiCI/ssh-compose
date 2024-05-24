@@ -5,7 +5,6 @@ See AUTHORS and LICENSE for the license details and contributors.
 package specs
 
 import (
-	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -48,9 +47,10 @@ func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
 				return ans, err
 			}
 		} else {
-			return ans, fmt.Errorf(
-				"the file %s doesn't exist.",
-				remotesconf)
+			// Just initialize an empty struct if the file doesn't
+			// exist. This could be happens in the initial setup.
+			ans = NewRemotesConfig()
+			ans.File = remotesconf
 		}
 	} else {
 		sshcDir, err := GetSshCRemotesDefaultConfDir()
@@ -68,6 +68,12 @@ func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
 			ans = NewRemotesConfig()
 			ans.File = remotesconf
 		}
+	}
+
+	// Correctly setup empty files.
+	if ans.Remotes == nil {
+		ans.Remotes = make(map[string]*Remote, 0)
+		ans.DefaultRemote = ""
 	}
 	return ans, nil
 }
