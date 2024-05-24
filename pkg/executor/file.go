@@ -117,6 +117,9 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 	sourceLen := len(sourceDir)
 
 	fi, err := os.Stat(sourceDir)
+	if err != nil {
+		return err
+	}
 	if stat, ok := fi.Sys().(*syscall.Stat_t); ok {
 		uid = int(stat.Uid)
 		gid = int(stat.Gid)
