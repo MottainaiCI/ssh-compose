@@ -188,7 +188,7 @@ func (s *SshCExecutor) getSigner() (ssh.Signer, error) {
 func (s *SshCExecutor) sshInteractive(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
 	answers = make([]string, len(questions))
 	// The second parameter is unused
-	for n, _ := range questions {
+	for n := range questions {
 		//fmt.Println("Question ", v)
 		answers[n] = s.Pass
 	}
