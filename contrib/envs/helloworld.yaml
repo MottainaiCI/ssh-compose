@@ -22,6 +22,10 @@ projects:
           - name: node-example
             endpoint: test
 
+            config_templates:
+              - source: files/config.tmpl
+                dst: /tmp/config-example
+
             sync_resources:
               - source: ../../contrib/
                 dst: /root/

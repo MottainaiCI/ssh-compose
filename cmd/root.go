@@ -91,6 +91,7 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 	config.Viper.BindPFlag("logging.cmds_output", pflags.Lookup("cmds-output"))
 
 	rootCmd.AddCommand(
+		NewCompileCommand(config),
 		NewShellCommand(config),
 		NewExecCommand(config),
 		newProjectCommand(config),
