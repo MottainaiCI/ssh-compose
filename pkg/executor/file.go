@@ -114,7 +114,6 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 		dir = target
 		sourceDir = source
 	}
-	sourceLen := len(sourceDir)
 
 	fi, err := os.Stat(sourceDir)
 	if err != nil {
@@ -146,8 +145,15 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 			return fmt.Errorf("'%s' isn't a supported file type", p)
 		}
 
+		var targetPath string
+
 		// Prepare for file transfer
-		targetPath := path.Join(target, filepath.ToSlash(p[sourceLen:]))
+		if sourceDir != "." {
+			segments := strings.Split(p, "/")
+			targetPath = path.Join(target, strings.Join(segments[1:], "/"))
+		} else {
+			targetPath = path.Join(target, p)
+		}
 
 		if p == source {
 			if targetIsFile && sourceIsFile {
@@ -205,12 +211,27 @@ func (s *SshCExecutor) RecursivePushFile(nodeName, source, target string, ensure
 			if err != nil {
 				return err
 			}
-			defer dstFile.Close()
 
 			_, err = io.Copy(dstFile, f)
 			if err != nil {
+				dstFile.Close()
 				return err
 			}
+
+			dstFile.Sync()
+			dstFile.Close()
+
+			// Check if the file is been created correctly.
+			// I catch a weird behavior that the file is been
+			// copied by later is not present
+
+			fi, err := s.SftpClient.Stat(targetPath)
+			if fi == nil || err != nil {
+				return fmt.Errorf("File %s not copied correctly.",
+					targetPath,
+				)
+			}
+
 		}
 
 		if ensurePerms {
