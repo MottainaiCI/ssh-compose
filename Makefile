@@ -65,4 +65,4 @@ vendor:
 .PHONY: goreleaser-snapshot
 goreleaser-snapshot:
 	rm -rf dist/ || true
-	goreleaser release --debug --skip-publish  --skip-validate --snapshot
+	goreleaser release --skip-publish  --skip-validate --snapshot
