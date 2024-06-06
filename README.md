@@ -1,5 +1,9 @@
 # SSH Compose
 
+[![Build Status](https://github.com/MottainaiCI/ssh-compose/actions/workflows/push.yml/badge.svg)](https://github.com/MottainaiCI/ssh-compose/actions/workflows/push.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/MottainaiCI/ssh-compose)](https://goreportcard.com/report/github.com/MottainaiCI/ssh-compose)
+[![CodeQL](https://github.com/MottainaiCI/ssh-compose/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/MottainaiCI/ssh-compose/actions/workflows/codeql-analysis.yml)
+
 **ssh-compose** is the sister of the **lxd-compose** project and supplies a way to deploy a complex environment
 using SSH protocol.
 
