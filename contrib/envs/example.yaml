@@ -17,6 +17,19 @@ template_engine:
     - "contrib/filters/ansible_wrapper.py"
     - "contrib/filters/from_json.py"
 
+commands:
+  - name: "command1"
+    description: "Run command 1"
+    project: "ssh-compose-example1"
+    apply_alias: true
+    enable_groups:
+      - group1
+    enable_flags:
+      - cmd_disable
+    envs:
+      mykey: "xxxx"
+
+
 
 projects:
   - name: "ssh-compose-example1"
@@ -52,6 +65,13 @@ projects:
                 commands:
                   - echo "1"
 
+              - event: pre-node-sync
+                disable: true
+                flags:
+                  - cmd_disable
+                commands:
+                  - >-
+                    echo "I'm a command Disabled"
 
               - event: pre-node-sync
                 flags:
