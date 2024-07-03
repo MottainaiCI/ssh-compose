@@ -93,6 +93,7 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 	rootCmd.AddCommand(
 		NewCompileCommand(config),
 		NewShellCommand(config),
+		newCommandCommand(config),
 		NewExecCommand(config),
 		newProjectCommand(config),
 		newRemoteCommand(config),
