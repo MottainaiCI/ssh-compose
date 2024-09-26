@@ -26,7 +26,7 @@ func NewCompileCommand(config *specs.SshComposeConfig) *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:     "compile [list-of-projects]",
 		Short:   "Compiles files of selected projects.",
-		Aliases: []string{"a"},
+		Aliases: []string{"co"},
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
 				fmt.Println("No project selected.")
