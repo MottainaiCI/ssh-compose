@@ -37,7 +37,7 @@ type Remote struct {
 	Pass           string `json:"pass,omitempty" yaml:"pass,omitempty"`
 
 	Labels  []string          `json:"labels,omitempty" yaml:"labels,omitempty"`
-	Options map[string]string `json:"options,omitempty yaml:"options,omitempty"`
+	Options map[string]string `json:"options,omitempty" yaml:"options,omitempty"`
 }
 
 func NewRemote(host, protocol, authMethod string, port int) *Remote {
