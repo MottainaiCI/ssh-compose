@@ -1,5 +1,12 @@
 default-remote: test
 remotes:
+    mynode1:
+        host: 10.10.10.10
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: geaaru
+        pass: pass
     mynode2:
         host: 192.168.0.90
         port: 22
@@ -7,16 +14,17 @@ remotes:
         auth_type: publickey
         privatekey_file: /home/geaaru/.ssh/id_ed25519
         user: geaaru
-    mynode1:
-        host: 10.10.10.10
-        port: 22
-        auth_type: password
-        user: geaaru
-        pass: pass
     test:
         host: 172.18.10.192
         port: 22
         protocol: tcp
         auth_type: password
         user: root
-        pass: pass
+        pass: qwe123
+    test2:
+        host: 172.18.10.192
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: root
+        pass: qwe123

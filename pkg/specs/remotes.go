@@ -35,6 +35,9 @@ type Remote struct {
 	PrivateKeyRaw  string `json:"privatekey_raw,omitempty" yaml:"privatekey_raw,omitempty"`
 	User           string `json:"user,omitempty" yaml:"user,omitempty"`
 	Pass           string `json:"pass,omitempty" yaml:"pass,omitempty"`
+
+	Labels  []string          `json:"labels,omitempty" yaml:"labels,omitempty"`
+	Options map[string]string `json:"options,omitempty yaml:"options,omitempty"`
 }
 
 func NewRemote(host, protocol, authMethod string, port int) *Remote {
@@ -66,6 +69,32 @@ func (r *Remote) GetPrivateKeyPass() string { return r.PrivateKeyPass }
 func (r *Remote) GetPrivateKeyRaw() string  { return r.PrivateKeyRaw }
 func (r *Remote) GetUser() string           { return r.User }
 func (r *Remote) GetPass() string           { return r.Pass }
+
+func (r *Remote) GetOption(o string) string {
+	if r.Options != nil {
+		for k, v := range r.Options {
+			if k == o {
+				return v
+			}
+		}
+	}
+	return ""
+}
+func (r *Remote) HasLabel(l string) bool {
+	ans := false
+	if r.Labels != nil {
+		for _, label := range r.Labels {
+			if label == l {
+				ans = true
+				break
+			}
+		}
+	}
+	return ans
+}
+
+func (r *Remote) GetLabels() []string           { return r.Labels }
+func (r *Remote) GetOptions() map[string]string { return r.Options }
 
 func NewRemotesConfig() *RemotesConfig {
 	return &RemotesConfig{

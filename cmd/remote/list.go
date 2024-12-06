@@ -24,6 +24,7 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 		Short:   "List remotes availables.",
 		Run: func(cmd *cobra.Command, args []string) {
 			jsonOutput, _ := cmd.Flags().GetBool("json")
+			labels, _ := cmd.Flags().GetStringArray("label")
 
 			// Create Instance
 			composer, err := loader.NewSshCInstance(config)
@@ -34,9 +35,30 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			logger := composer.GetLogger()
 
+			remotes := composer.GetRemotes().Remotes
+
+			if len(labels) > 0 {
+				remotes = make(map[string]*specs.Remote, 0)
+
+				for name, remote := range composer.GetRemotes().Remotes {
+
+					hasLabel := false
+					for _, l := range labels {
+						if remote.HasLabel(l) {
+							hasLabel = true
+							break
+						}
+					}
+
+					if hasLabel {
+						remotes[name] = remote
+					}
+				}
+			}
+
 			if jsonOutput {
 
-				data, err := json.Marshal(composer.GetRemotes())
+				data, err := json.Marshal(remotes)
 				if err != nil {
 					logger.Fatal("Error on decode projects ", err.Error())
 				}
@@ -53,7 +75,7 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 				table.SetAutoWrapText(false)
 
 				remoteNames := []string{}
-				for name := range composer.GetRemotes().Remotes {
+				for name := range remotes {
 					remoteNames = append(remoteNames, name)
 				}
 				sort.Strings(remoteNames)
@@ -87,6 +109,7 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 	var flags = cmd.Flags()
 	flags.Bool("json", false, "JSON output")
+	flags.StringArray("label", []string{}, "Filter remotes with specific labels.")
 
 	return cmd
 }
