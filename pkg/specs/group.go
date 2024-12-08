@@ -75,3 +75,9 @@ func (g *SshCGroup) AddHooks(h *SshCHooks) {
 		g.Hooks = append(g.Hooks, h.Hooks...)
 	}
 }
+
+func (g *SshCGroup) PrependHooks(h *SshCHooks) {
+	if len(h.Hooks) > 0 {
+		g.Hooks = append(h.Hooks, g.Hooks...)
+	}
+}

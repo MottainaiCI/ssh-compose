@@ -627,16 +627,22 @@ func (i *SshCInstance) ApplyCommand(c *specs.SshCCommand, proj *specs.SshCProjec
 
 	if len(c.IncludeHooksFiles) > 0 {
 
-		for _, hfile := range c.IncludeHooksFiles {
+		for _, hinclude := range c.IncludeHooksFiles {
 
-			// Load project included hooks
-			hf := path.Join(envBaseDir, hfile)
-			hooks, err := i.getHooks(hfile, hf, proj)
-			if err != nil {
-				return err
+			for _, hfile := range hinclude.GetFiles() {
+				// Load project included hooks
+				hf := path.Join(envBaseDir, hfile)
+				hooks, err := i.getHooks(hfile, hf, proj)
+				if err != nil {
+					return err
+				}
+
+				if hinclude.IncludeInAppend() {
+					proj.AddHooks(hooks)
+				} else {
+					proj.PrependHooks(hooks)
+				}
 			}
-
-			proj.AddHooks(hooks)
 		}
 	}
 

@@ -139,3 +139,9 @@ func (p *SshCProject) AddHooks(h *SshCHooks) {
 		p.Hooks = append(p.Hooks, h.Hooks...)
 	}
 }
+
+func (p *SshCProject) PrependHooks(h *SshCHooks) {
+	if len(h.Hooks) > 0 {
+		p.Hooks = append(h.Hooks, p.Hooks...)
+	}
+}

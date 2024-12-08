@@ -231,17 +231,24 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 
 		if len(proj.IncludeHooksFiles) > 0 {
 
-			for _, hfile := range proj.IncludeHooksFiles {
+			for _, hinclude := range proj.IncludeHooksFiles {
 
-				// Load project included hooks
-				hf := path.Join(envBaseDir, hfile)
-				hooks, err := i.getHooks(hfile, hf, &proj)
-				if err != nil {
-					return err
+				for _, hfile := range hinclude.GetFiles() {
+
+					// Load project included hooks
+					hf := path.Join(envBaseDir, hfile)
+					hooks, err := i.getHooks(hfile, hf, &proj)
+					if err != nil {
+						return err
+					}
+
+					if hinclude.IncludeInAppend() {
+						env.Projects[idx].AddHooks(hooks)
+					} else {
+						env.Projects[idx].PrependHooks(hooks)
+					}
+
 				}
-
-				env.Projects[idx].AddHooks(hooks)
-
 			}
 
 		} else {
@@ -253,14 +260,21 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 
 			if len(g.IncludeHooksFiles) > 0 {
 
-				for _, hfile := range g.IncludeHooksFiles {
-					hf := path.Join(envBaseDir, hfile)
-					hooks, err := i.getHooks(hfile, hf, &proj)
-					if err != nil {
-						return err
-					}
+				for _, hinclude := range g.IncludeHooksFiles {
+					for _, hfile := range hinclude.GetFiles() {
 
-					env.Projects[idx].Groups[gidx].AddHooks(hooks)
+						hf := path.Join(envBaseDir, hfile)
+						hooks, err := i.getHooks(hfile, hf, &proj)
+						if err != nil {
+							return err
+						}
+
+						if hinclude.IncludeInAppend() {
+							env.Projects[idx].Groups[gidx].AddHooks(hooks)
+						} else {
+							env.Projects[idx].Groups[gidx].PrependHooks(hooks)
+						}
+					}
 				}
 
 			}
@@ -269,14 +283,21 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 			for nidx, n := range g.Nodes {
 
 				if len(n.IncludeHooksFiles) > 0 {
-					for _, hfile := range n.IncludeHooksFiles {
-						hf := path.Join(envBaseDir, hfile)
-						hooks, err := i.getHooks(hfile, hf, &proj)
-						if err != nil {
-							return err
-						}
 
-						env.Projects[idx].Groups[gidx].Nodes[nidx].AddHooks(hooks)
+					for _, hinclude := range n.IncludeHooksFiles {
+						for _, hfile := range hinclude.GetFiles() {
+							hf := path.Join(envBaseDir, hfile)
+							hooks, err := i.getHooks(hfile, hf, &proj)
+							if err != nil {
+								return err
+							}
+
+							if hinclude.IncludeInAppend() {
+								env.Projects[idx].Groups[gidx].Nodes[nidx].AddHooks(hooks)
+							} else {
+								env.Projects[idx].Groups[gidx].Nodes[nidx].PrependHooks(hooks)
+							}
+						}
 					}
 				}
 			}

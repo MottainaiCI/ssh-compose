@@ -56,9 +56,9 @@ type SshCProject struct {
 	Name        string `json:"name" yaml:"name"`
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
-	IncludeGroupFiles []string `json:"include_groups_files,omitempty" yaml:"include_groups_files,omitempty"`
-	IncludeEnvFiles   []string `json:"include_env_files,omitempty" yaml:"include_env_files,omitempty"`
-	IncludeHooksFiles []string `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
+	IncludeGroupFiles []string       `json:"include_groups_files,omitempty" yaml:"include_groups_files,omitempty"`
+	IncludeEnvFiles   []string       `json:"include_env_files,omitempty" yaml:"include_env_files,omitempty"`
+	IncludeHooksFiles []*SshCInclude `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
 
 	Environments []SshCEnvVars `json:"vars,omitempty" yaml:"vars,omitempty"`
 
@@ -72,9 +72,9 @@ type SshCProjectSanitized struct {
 	Name        string `json:"name" yaml:"name"`
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
-	IncludeGroupFiles []string `json:"include_groups_files,omitempty" yaml:"include_groups_files,omitempty"`
-	IncludeEnvFiles   []string `json:"include_env_files,omitempty" yaml:"include_env_files,omitempty"`
-	IncludeHooksFiles []string `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
+	IncludeGroupFiles []string       `json:"include_groups_files,omitempty" yaml:"include_groups_files,omitempty"`
+	IncludeEnvFiles   []string       `json:"include_env_files,omitempty" yaml:"include_env_files,omitempty"`
+	IncludeHooksFiles []*SshCInclude `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
 
 	Groups []SshCGroup `json:"groups" yaml:"groups"`
 
@@ -95,7 +95,7 @@ type SshCGroup struct {
 	Nodes []SshCNode `json:"nodes" yaml:"nodes"`
 
 	Hooks             []SshCHook           `json:"hooks" yaml:"hooks"`
-	IncludeHooksFiles []string             `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
+	IncludeHooksFiles []*SshCInclude       `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
 	ConfigTemplates   []SshCConfigTemplate `json:"config_templates,omitempty" yaml:"config_templates,omitempty"`
 }
 
@@ -118,8 +118,8 @@ type SshCNode struct {
 	ConfigTemplates []SshCConfigTemplate `json:"config_templates,omitempty" yaml:"config_templates,omitempty"`
 	SyncResources   []SshCSyncResource   `json:"sync_resources,omitempty" yaml:"sync_resources,omitempty"`
 
-	Hooks             []SshCHook `json:"hooks" yaml:"hooks"`
-	IncludeHooksFiles []string   `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
+	Hooks             []SshCHook     `json:"hooks" yaml:"hooks"`
+	IncludeHooksFiles []*SshCInclude `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
 }
 
 type SshCConfigTemplate struct {
@@ -150,5 +150,10 @@ type SshCCommand struct {
 	Envs     SshCEnvVars `json:"envs,omitempty" yaml:"envs,omitempty"`
 	VarFiles []string    `json:"vars_files,omitempty" yaml:"vars_files,omitempty"`
 
-	IncludeHooksFiles []string `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
+	IncludeHooksFiles []*SshCInclude `json:"include_hooks_files,omitempty" yaml:"include_hooks_files,omitempty"`
+}
+
+type SshCInclude struct {
+	Type  string   `json:"mode,omitempty" yaml:"mode,omitempty"`
+	Files []string `json:"files,omitempty" yaml:"files,omitempty"`
 }

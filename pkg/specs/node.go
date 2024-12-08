@@ -57,3 +57,9 @@ func (n *SshCNode) AddHooks(h *SshCHooks) {
 		n.Hooks = append(n.Hooks, h.Hooks...)
 	}
 }
+
+func (n *SshCNode) PrependHooks(h *SshCHooks) {
+	if len(h.Hooks) > 0 {
+		n.Hooks = append(h.Hooks, n.Hooks...)
+	}
+}
