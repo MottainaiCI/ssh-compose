@@ -100,8 +100,8 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 				err = composer.ApplyProject(proj)
 				if err != nil {
-					logger.Fatal("Error on apply project " + proj + ": " + err.Error())
-					os.Exit(1)
+					logger.Fatal(fmt.Sprintf(
+						"Project %s failed. %s", proj, err.Error()))
 				}
 
 			}

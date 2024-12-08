@@ -16,6 +16,7 @@ const (
 	HookPostNodeSync = "post-node-sync"
 	HookPostGroup    = "post-group"
 	HookPostProject  = "post-project"
+	HookFinally      = "finally"
 )
 
 func getHooks(hooks *[]SshCHook, event string) []SshCHook {
