@@ -195,6 +195,6 @@ func (l *SshCLogger) Error(mess ...interface{}) {
 }
 
 func (l *SshCLogger) Fatal(mess ...interface{}) {
-	l.Error(mess)
+	l.Error(mess...)
 	os.Exit(1)
 }
