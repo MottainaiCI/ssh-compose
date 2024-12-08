@@ -63,3 +63,18 @@ func (n *SshCNode) PrependHooks(h *SshCHooks) {
 		n.Hooks = append(h.Hooks, n.Hooks...)
 	}
 }
+
+func (n *SshCNode) PrependHooksList(list []*SshCHooks) {
+	// Drop empty hooks
+	hooks := []SshCHook{}
+
+	if len(list) > 0 {
+		for idx := range list {
+			if len(list[idx].Hooks) > 0 {
+				hooks = append(hooks, list[idx].Hooks...)
+			}
+		}
+
+		n.Hooks = append(hooks, n.Hooks...)
+	}
+}

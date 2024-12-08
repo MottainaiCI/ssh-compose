@@ -233,6 +233,8 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 
 			for _, hinclude := range proj.IncludeHooksFiles {
 
+				hooks2prepend := []*specs.SshCHooks{}
+
 				for _, hfile := range hinclude.GetFiles() {
 
 					// Load project included hooks
@@ -245,9 +247,13 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 					if hinclude.IncludeInAppend() {
 						env.Projects[idx].AddHooks(hooks)
 					} else {
-						env.Projects[idx].PrependHooks(hooks)
+						hooks2prepend = append(hooks2prepend, hooks)
 					}
 
+				}
+
+				if len(hooks2prepend) > 0 {
+					env.Projects[idx].PrependHooksList(hooks2prepend)
 				}
 			}
 
@@ -261,6 +267,9 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 			if len(g.IncludeHooksFiles) > 0 {
 
 				for _, hinclude := range g.IncludeHooksFiles {
+
+					hooks2prepend := []*specs.SshCHooks{}
+
 					for _, hfile := range hinclude.GetFiles() {
 
 						hf := path.Join(envBaseDir, hfile)
@@ -272,8 +281,12 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 						if hinclude.IncludeInAppend() {
 							env.Projects[idx].Groups[gidx].AddHooks(hooks)
 						} else {
-							env.Projects[idx].Groups[gidx].PrependHooks(hooks)
+							hooks2prepend = append(hooks2prepend, hooks)
 						}
+					}
+
+					if len(hooks2prepend) > 0 {
+						env.Projects[idx].Groups[gidx].PrependHooksList(hooks2prepend)
 					}
 				}
 
@@ -283,6 +296,8 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 			for nidx, n := range g.Nodes {
 
 				if len(n.IncludeHooksFiles) > 0 {
+
+					hooks2prepend := []*specs.SshCHooks{}
 
 					for _, hinclude := range n.IncludeHooksFiles {
 						for _, hfile := range hinclude.GetFiles() {
@@ -295,9 +310,13 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 							if hinclude.IncludeInAppend() {
 								env.Projects[idx].Groups[gidx].Nodes[nidx].AddHooks(hooks)
 							} else {
-								env.Projects[idx].Groups[gidx].Nodes[nidx].PrependHooks(hooks)
+								hooks2prepend = append(hooks2prepend, hooks)
 							}
 						}
+					}
+
+					if len(hooks2prepend) > 0 {
+						env.Projects[idx].Groups[gidx].Nodes[nidx].PrependHooksList(hooks2prepend)
 					}
 				}
 			}

@@ -81,3 +81,18 @@ func (g *SshCGroup) PrependHooks(h *SshCHooks) {
 		g.Hooks = append(h.Hooks, g.Hooks...)
 	}
 }
+
+func (g *SshCGroup) PrependHooksList(list []*SshCHooks) {
+	// Drop empty hooks
+	hooks := []SshCHook{}
+
+	if len(list) > 0 {
+		for idx := range list {
+			if len(list[idx].Hooks) > 0 {
+				hooks = append(hooks, list[idx].Hooks...)
+			}
+		}
+
+		g.Hooks = append(hooks, g.Hooks...)
+	}
+}
