@@ -40,6 +40,8 @@ func NewRunCommand(config *specs.SshComposeConfig) *cobra.Command {
 	var envs []string
 	var renderEnvs []string
 	var varsFiles []string
+	var enabledGroups []string
+	var disabledGroups []string
 
 	var cmd = &cobra.Command{
 		Use:     "run <project> <command>",
@@ -115,6 +117,9 @@ func NewRunCommand(config *specs.SshComposeConfig) *cobra.Command {
 						" on project " + pname)
 			}
 
+			command.SetDisableGroups(disabledGroups)
+			command.SetEnableGroups(enabledGroups)
+
 			err = ApplyCommand(command, composer,
 				env.GetProjectByName(pname),
 				envs, varsFiles,
@@ -128,6 +133,10 @@ func NewRunCommand(config *specs.SshComposeConfig) *cobra.Command {
 	}
 
 	var flags = cmd.Flags()
+	flags.StringSliceVar(&disabledGroups, "disable-group", []string{},
+		"Skip selected group from deploy.")
+	flags.StringSliceVar(&enabledGroups, "enable-group", []string{},
+		"Apply only selected groups.")
 	flags.StringArrayVar(&renderEnvs, "render-env", []string{},
 		"Append render engine environments in the format key=value.")
 	flags.StringArrayVar(&envs, "env", []string{},
