@@ -18,6 +18,8 @@ import (
 )
 
 func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
+	var renderEnvs []string
+
 	var cmd = &cobra.Command{
 		Use:     "list <project>",
 		Aliases: []string{"l"},
@@ -41,6 +43,12 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 			}
 
 			logger := composer.GetLogger()
+
+			// We need set this before loading phase
+			err = config.SetRenderEnvs(renderEnvs)
+			if err != nil {
+				logger.Fatal("Error on render specs: " + err.Error() + "\n")
+			}
 
 			err = composer.LoadEnvironments()
 			if err != nil {
@@ -98,6 +106,8 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 	var flags = cmd.Flags()
 	flags.Bool("json", false, "JSON output")
 	flags.StringP("search", "s", "", "Regex filter to use with network name.")
+	flags.StringArrayVar(&renderEnvs, "render-env", []string{},
+		"Append render engine environments in the format key=value.")
 
 	return cmd
 }
