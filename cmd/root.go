@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 Daniele Rondina <geaaru@macaronios.org>
+Copyright © 2024-2025 Daniele Rondina <geaaru@macaronios.org>
 See AUTHORS and LICENSE for the license details and contributors.
 */
 package cmd
@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	cliName = `Copyright © 2024 Mottainai - Daniele Rondina
+	cliName = `Copyright © 2024-2025 Mottainai - Daniele Rondina
 
 Mottainai - SSH Compose Integrator`
 )
