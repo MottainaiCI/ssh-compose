@@ -7,6 +7,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	//loader "github.com/MottainaiCI/ssh-compose/pkg/loader"
 	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
@@ -79,6 +81,12 @@ func NewShellCommand(config *specs.SshComposeConfig) *cobra.Command {
 				logger.Fatal("Error on get session:" + err.Error() + "\n")
 			}
 			defer restoreTermCb()
+
+			// Manage dynamic resize of the window
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, syscall.SIGWINCH)
+
+			go ssh_executor.ResizeWindowHandler(sigs, os.Stdin, session)
 
 			if !withoutEnvs {
 				err = session.Setenv(fmt.Sprintf(
