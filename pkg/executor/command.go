@@ -89,7 +89,7 @@ func (e *SshCExecutor) RunCommandWithOutput(nodeName, command string, envs map[s
 		e.Emitter.DebugLog(true,
 			logger.Aurora.Bold(
 				logger.Aurora.BrightCyan(
-					fmt.Sprintf(">>> [%s] Exiting", nodeName, ans))))
+					fmt.Sprintf(">>> [%s] Exiting (%d)", nodeName, ans))))
 	}
 
 	return ans, nil
