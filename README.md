@@ -243,6 +243,33 @@ So, using the options `cisco_device` and `cisco_prompt`:
 ```
 it's possible to execute commands to a cisco device and store the output in the logfile.
 
+Example:
+
+```bash
+$> ssh-compose a cisco-example
+>>> Applying project ➡ cisco-example1 🚀 
+>>> [node1] - show vrf link-A - ☕ 
+  Name                             Default RD            Protocols   Interfaces
+  link-A                           1000:1000             ipv4        Vl200
+                                                                     Vl500
+                                                                     Vl1001
+                                                                     Vl1002
+3750-MYDEV#
+>>> [node1] - show vrf link-B - ☕ 
+  Name                             Default RD            Protocols   Interfaces
+  link-B                           2000:2000             ipv4        Lo60
+                                                                     Lo103
+                                                                     Lo104
+                                                                     Tu60
+                                                                     Tu114
+                                                                     Tu115
+                                                                     Vl201
+                                                                     Vl2194
+3750-MYDEV#
+🎉 All done!
+
+```
+
 ## A simple example
 
 Considering a simple example where I want to upgrade the Ubuntu and Macaroni OS nodes
