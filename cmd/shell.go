@@ -66,7 +66,7 @@ func NewShellCommand(config *specs.SshComposeConfig) *cobra.Command {
 			}
 			err = executor.Setup()
 			if err != nil {
-				logger.Fatal("Error on setup executor:" + err.Error() + "\n")
+				logger.Fatal("Error on setup executor: " + err.Error() + "\n")
 			}
 			defer executor.Close()
 
