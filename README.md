@@ -213,6 +213,35 @@ $ ssh-compose shell test --debug --without-envs
 test ~ #
 ```
 
+### Cisco Devices
+
+It's possible to use ssh-compose projects to run hooks over
+Cisco device but with limitations.
+
+Cisco Device 3750, for example, doesn't support multi SSH sessions and
+avoiding to open and close tons of sockets to device the only possible
+way is to use one single session as PTY and write commands through stdin.
+This means that it uses ssh.Shell session without having a result value
+of the executed command. More complex scenario could be created using
+ssh-compose Golang API with a specific application.
+
+So, using the options `cisco_device` and `cisco_prompt`:
+```
+    cisco-3750:
+        host: 10.10.50.1
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: pix
+        pass: cisco
+        tun_local_port: 20000
+        tun_local_addr: "localhost"
+        tun_local_bind: false
+        cisco_device: true
+        # Keep empty to automatically catch the prompt at login
+        cisco_prompt: 3750-MYDEV#
+```
+it's possible to execute commands to a cisco device and store the output in the logfile.
 
 ## A simple example
 

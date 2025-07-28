@@ -5,6 +5,7 @@ See AUTHORS and LICENSE for the license details and contributors.
 package executor
 
 import (
+	"bufio"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -50,6 +51,10 @@ type SshCExecutor struct {
 	RuntimeCmdsOutput bool
 	Entrypoint        []string
 
+	// Cisco Device options
+	CiscoDevice bool
+	CiscoPrompt string
+
 	TTYOpISpeed uint32
 	TTYOpOSpeed uint32
 
@@ -83,6 +88,14 @@ type SshCExecutor struct {
 type SshCSession struct {
 	*ssh.Session
 	Name string
+
+	// Pipes
+	stdinPipe     io.WriteCloser
+	stdoutPipe    io.Reader
+	stderrPipeBuf *bufio.Reader
+	stdoutPipeBuf *bufio.Reader
+
+	CiscoPrompt string
 }
 
 type TermShellRestoreCb func() error
@@ -149,6 +162,8 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 	ans := NewSshCExecutor(rname, r.Host, r.Port)
 	ans.ConnProtocol = r.Protocol
 	ans.User = r.User
+	ans.CiscoDevice = r.CiscoDevice
+	ans.CiscoPrompt = r.CiscoPrompt
 	if r.AuthMethod == specs.AuthMethodPassword {
 		ans.Pass = r.Pass
 	} else {
@@ -634,6 +649,10 @@ func (s *SshCExecutor) GetSession(n string) (*SshCSession, error) {
 		return nil, fmt.Errorf("SSH Client not initialized")
 	}
 
+	if len(s.Sessions) > 0 && s.CiscoDevice {
+		return nil, fmt.Errorf("Cisco device supports only one session")
+	}
+
 	session, err := s.Client.NewSession()
 	if err != nil {
 		return nil, err
@@ -693,11 +712,12 @@ func (s *SshCExecutor) GetShellSessionWithTermSetup(n, termType string,
 	if err != nil {
 		return nil, nil, fmt.Errorf("error on terminal makeraw: %s", err.Error())
 	}
+
 	restoreCb := func() error {
 		return terminal.Restore(fd, state)
 	}
 
-	if err := session.RequestPty(termType, h, w, modes); err != nil {
+	if err = session.RequestPty(termType, h, w, modes); err != nil {
 		return nil, nil, fmt.Errorf(
 			"error on request pseudo terminal: %s", err.Error())
 	}

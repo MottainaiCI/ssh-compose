@@ -36,6 +36,9 @@ type Remote struct {
 	User           string `json:"user,omitempty" yaml:"user,omitempty"`
 	Pass           string `json:"pass,omitempty" yaml:"pass,omitempty"`
 	TimeoutSecs    *uint  `json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
+	// Enable special single session mode for Cisco Device
+	CiscoDevice bool   `json:"cisco_device,omitempty" yaml:"cisco_device,omitempty"`
+	CiscoPrompt string `json:"cisco_prompt,omitempty" yaml:"cisco_prompt,omitempty"`
 
 	Labels  []string          `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Options map[string]string `json:"options,omitempty" yaml:"options,omitempty"`
@@ -84,6 +87,8 @@ func (r *Remote) GetTimeoutSecs() *uint     { return r.TimeoutSecs }
 func (r *Remote) GetTunLocalPort() int      { return r.TunLocalPort }
 func (r *Remote) GetTunLocalBind() bool     { return r.TunLocalBind }
 func (r *Remote) GetTunLocalAddr() string   { return r.TunLocalAddr }
+func (r *Remote) GetCiscoPrompt() string    { return r.CiscoPrompt }
+func (r *Remote) GetCiscoDevice() bool      { return r.CiscoDevice }
 func (r *Remote) GetChain() []Remote        { return r.Chain }
 
 func (r *Remote) HasChain() bool { return len(r.Chain) > 0 }

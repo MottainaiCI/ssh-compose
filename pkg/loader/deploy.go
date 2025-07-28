@@ -307,12 +307,33 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 				res, err = executor.RunCommandWithOutput4Var(node, cmds, h.Out2Var, h.Err2Var, &envs, h.Entrypoint)
 			} else {
 				if i.Config.GetLogging().RuntimeCmdsOutput {
+
 					emitter := executor.GetEmitter()
-					res, err = executor.RunCommandWithOutput(
-						node, cmds, envs,
-						(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStdout(),
-						(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStderr(),
-						h.Entrypoint)
+
+					if executor.CiscoDevice {
+
+						// Cisco device seems doesn't support multi SSH sessions.
+						// We need to use a pty ssh session and write the hooks
+						// command in the same session.
+						// In this case we lose support of the return status of
+						// a command. We need to process the output but is
+						// at the moment just ignore. We run the command
+						// without check response.
+						res, err = executor.RunCommandWithOutputOnCiscoDevice(
+							node, cmds, envs,
+							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStdout(),
+							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStderr(),
+							h.Entrypoint)
+
+					} else {
+
+						res, err = executor.RunCommandWithOutput(
+							node, cmds, envs,
+							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStdout(),
+							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStderr(),
+							h.Entrypoint)
+
+					}
 				} else {
 					res, err = executor.RunCommand(
 						node, cmds, envs, h.Entrypoint,
