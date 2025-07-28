@@ -262,17 +262,6 @@ func (s *SshCExecutor) getSigner(privateKey, privateKeyPass string) (ssh.Signer,
 	return signer, err
 }
 
-func (s *SshCExecutor) sshInteractive(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
-	answers = make([]string, len(questions))
-	// The second parameter is unused
-	for n := range questions {
-		//fmt.Println("Question ", v)
-		answers[n] = s.Pass
-	}
-
-	return answers, nil
-}
-
 func (s *SshCExecutor) Close() {
 
 	// Close all sessions
@@ -323,7 +312,6 @@ func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
 	var err error
 
 	for idx := range s.TunnelChain {
-
 		conf, err := s.getSshClientConfig(
 			s.TunnelChain[idx].User,
 			s.TunnelChain[idx].Pass,
@@ -472,7 +460,15 @@ func (s *SshCExecutor) getSshClientConfig(user, pass,
 	if pass != "" {
 		conf.Auth = []ssh.AuthMethod{
 			ssh.Password(pass),
-			ssh.KeyboardInteractive(s.sshInteractive),
+			ssh.KeyboardInteractive(
+				func(user, instruction string, questions []string, echos []bool) (answers []string, err error) {
+					answers = make([]string, len(questions))
+					// The second parameter is unused
+					for n := range questions {
+						answers[n] = pass
+					}
+					return answers, nil
+				}),
 		}
 	} else {
 		signer, err := s.getSigner(privateKey, privateKeyPass)
@@ -530,6 +526,9 @@ func (s *SshCExecutor) Setup() error {
 				s.Endpoint, targetAddr, s.Host, s.Port))
 
 			s.Client, err = ssh.Dial(s.ConnProtocol, targetAddr, conf)
+			if err != nil {
+				return err
+			}
 
 		} else {
 
@@ -631,12 +630,17 @@ func (s *SshCExecutor) GetSession(n string) (*SshCSession, error) {
 		return s.Sessions[n], nil
 	}
 
+	if s.Client == nil {
+		return nil, fmt.Errorf("SSH Client not initialized")
+	}
+
 	session, err := s.Client.NewSession()
 	if err != nil {
 		return nil, err
 	}
 
 	s.Sessions[n] = NewSshCSession(n, session)
+
 	return s.Sessions[n], nil
 }
 
