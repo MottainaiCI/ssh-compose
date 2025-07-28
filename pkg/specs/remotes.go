@@ -35,6 +35,7 @@ type Remote struct {
 	PrivateKeyRaw  string `json:"privatekey_raw,omitempty" yaml:"privatekey_raw,omitempty"`
 	User           string `json:"user,omitempty" yaml:"user,omitempty"`
 	Pass           string `json:"pass,omitempty" yaml:"pass,omitempty"`
+	TimeoutSecs    *uint  `json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
 
 	Labels  []string          `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Options map[string]string `json:"options,omitempty" yaml:"options,omitempty"`
@@ -57,16 +58,18 @@ func NewRemote(host, protocol, authMethod string, port int) *Remote {
 		PrivateKeyRaw:  "",
 		User:           "",
 		Pass:           "",
+		TimeoutSecs:    nil,
 		TunLocalBind:   false,
 	}
 }
 
-func (r *Remote) SetPrivateKeyFile(f string) { r.PrivateKeyFile = f }
-func (r *Remote) SetPrivateKeyPass(p string) { r.PrivateKeyPass = p }
-func (r *Remote) SetPrivateKeyRaw(p string)  { r.PrivateKeyRaw = p }
-func (r *Remote) SetUser(u string)           { r.User = u }
-func (r *Remote) SetPass(p string)           { r.Pass = p }
-func (r *Remote) SetTunLocalPort(port int)   { r.TunLocalPort = port }
+func (r *Remote) SetPrivateKeyFile(f string)  { r.PrivateKeyFile = f }
+func (r *Remote) SetPrivateKeyPass(p string)  { r.PrivateKeyPass = p }
+func (r *Remote) SetPrivateKeyRaw(p string)   { r.PrivateKeyRaw = p }
+func (r *Remote) SetUser(u string)            { r.User = u }
+func (r *Remote) SetPass(p string)            { r.Pass = p }
+func (r *Remote) SetTunLocalPort(port int)    { r.TunLocalPort = port }
+func (r *Remote) SetTimeoutSecs(timeout uint) { r.TimeoutSecs = &timeout }
 
 func (r *Remote) GetHost() string           { return r.Host }
 func (r *Remote) GetPort() int              { return r.Port }
@@ -77,6 +80,7 @@ func (r *Remote) GetPrivateKeyPass() string { return r.PrivateKeyPass }
 func (r *Remote) GetPrivateKeyRaw() string  { return r.PrivateKeyRaw }
 func (r *Remote) GetUser() string           { return r.User }
 func (r *Remote) GetPass() string           { return r.Pass }
+func (r *Remote) GetTimeoutSecs() *uint     { return r.TimeoutSecs }
 func (r *Remote) GetTunLocalPort() int      { return r.TunLocalPort }
 func (r *Remote) GetTunLocalBind() bool     { return r.TunLocalBind }
 func (r *Remote) GetTunLocalAddr() string   { return r.TunLocalAddr }

@@ -14,6 +14,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 	"github.com/MottainaiCI/ssh-compose/pkg/specs"
@@ -28,6 +29,7 @@ type TunnelHop struct {
 	ConnProtocol string
 	Host         string
 	Port         int
+	TimeoutSecs  *uint
 
 	User           string
 	Pass           string
@@ -43,6 +45,7 @@ type SshCExecutor struct {
 	// Ssh connection protocol. Valid values: tcp,tcp4,tcp6,unix
 	ConnProtocol      string
 	Port              int
+	TimeoutSecs       *uint
 	ShowCmdsOutput    bool
 	RuntimeCmdsOutput bool
 	Entrypoint        []string
@@ -99,6 +102,7 @@ func NewTunnelHop(r *specs.Remote) (*TunnelHop, error) {
 		User:         r.User,
 		Host:         r.Host,
 		Port:         r.Port,
+		TimeoutSecs:  r.TimeoutSecs,
 	}
 
 	if r.AuthMethod == specs.AuthMethodPassword {
@@ -164,6 +168,7 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 	ans.TunnelLocalPort = r.TunLocalPort
 	ans.TunnelLocalAddr = r.TunLocalAddr
 	ans.TunnelLocalBind = r.TunLocalBind
+	ans.TimeoutSecs = r.TimeoutSecs
 
 	if r.HasChain() {
 		for _, cr := range r.GetChain() {
@@ -316,7 +321,8 @@ func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
 			s.TunnelChain[idx].User,
 			s.TunnelChain[idx].Pass,
 			s.TunnelChain[idx].PrivateKey,
-			s.TunnelChain[idx].PrivateKeyPass)
+			s.TunnelChain[idx].PrivateKeyPass,
+			s.TunnelChain[idx].TimeoutSecs)
 		if err != nil {
 			return nil, err
 		}
@@ -451,7 +457,7 @@ func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
 }
 
 func (s *SshCExecutor) getSshClientConfig(user, pass,
-	privateKey, privateKeyPass string) (*ssh.ClientConfig, error) {
+	privateKey, privateKeyPass string, timeout *uint) (*ssh.ClientConfig, error) {
 	conf := &ssh.ClientConfig{
 		User:            user,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // XXX: Security issue
@@ -474,6 +480,13 @@ func (s *SshCExecutor) getSshClientConfig(user, pass,
 
 	}
 
+	if timeout != nil {
+		duration, err := time.ParseDuration(fmt.Sprintf("%ds", timeout))
+		if err == nil {
+			conf.Timeout = duration
+		}
+	}
+
 	return conf, nil
 }
 
@@ -491,7 +504,8 @@ func (s *SshCExecutor) Setup() error {
 	// all SSL sessions.
 	s.Ctx, s.Cancel = context.WithCancel(context.Background())
 
-	conf, err := s.getSshClientConfig(s.User, s.Pass, s.PrivateKey, s.PrivateKeyPass)
+	conf, err := s.getSshClientConfig(s.User, s.Pass, s.PrivateKey, s.PrivateKeyPass,
+		s.TimeoutSecs)
 	if err != nil {
 		return err
 	}
