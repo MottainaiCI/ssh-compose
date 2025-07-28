@@ -77,6 +77,7 @@ type SshCExecutor struct {
 	TunnelLocalAddr string
 	TunnelLocalBind bool
 	LocalListener   net.Listener
+	LocalListenerWg sync.WaitGroup
 }
 
 type SshCSession struct {
@@ -290,22 +291,29 @@ func (s *SshCExecutor) Close() {
 	if s.Client != nil {
 		s.Client.Close()
 		s.Client = nil
+	}
+
+	if len(s.TunnelChain) > 0 {
 
 		// Call context cancel
-		s.Cancel()
+		if s.Cancel != nil {
+			s.Cancel()
+		}
 
-		if len(s.TunnelChain) > 0 {
-			// Close tunnels session in the reverse order
-			for i := len(s.TunnelChain) - 1; i > 0; i-- {
+		// Close tunnels session in the reverse order
+		for i := len(s.TunnelChain) - 1; i > 0; i-- {
+			if s.TunnelChain[i].Client != nil {
 				s.TunnelChain[i].Client.Close()
-			}
-
-			if s.TunnelLocalBind {
-				s.LocalListener.Close()
 			}
 		}
 
+		if s.TunnelLocalBind {
+			s.LocalListener.Close()
+
+			s.LocalListenerWg.Wait()
+		}
 	}
+
 }
 
 func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
@@ -313,7 +321,6 @@ func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
 
 	var client *ssh.Client
 	var err error
-	var wg sync.WaitGroup
 
 	for idx := range s.TunnelChain {
 
@@ -437,7 +444,6 @@ func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
 					case <-s.Ctx.Done():
 						logger.DebugC(fmt.Sprintf("[%s] listener closed, shutting down.",
 							s.Endpoint))
-						wg.Wait()
 						return
 					default:
 						logger.DebugC(fmt.Sprintf("[%s] accept error from %s: %s",
@@ -445,8 +451,8 @@ func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
 						continue
 					}
 				}
-				wg.Add(1)
-				go handleClientCb(s.Ctx, conn, client, targetAddr, s.ConnProtocol, &wg)
+				s.LocalListenerWg.Add(1)
+				go handleClientCb(s.Ctx, conn, client, targetAddr, s.ConnProtocol, &s.LocalListenerWg)
 			}
 		}
 

@@ -102,6 +102,7 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 		newFileCommand(config),
 		newValidateCommand(config),
 		newDiagnoseCommand(config),
+		NewTunnelCommand(config),
 	)
 }
 
