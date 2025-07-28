@@ -162,7 +162,6 @@ The SSL channel created over the hop3 is later used to reach 172.18.10.192.
 It's also possible define a local port that is used to manage connection to the
 final node:
 
-```
 ```yaml
 
     test:
