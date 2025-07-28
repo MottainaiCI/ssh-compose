@@ -112,6 +112,108 @@ AcceptEnv SSH_COMPOSE_*
 
 The `SSH_COMPOSE` prefix could be replaced with a custom value defined in the `.ssh-compose.yml` file.
 
+### SSL Tunneling Chain
+
+In order to reach a specific remote over multiple hop it's possible define a chain of node to use and
+optional binding a local port to use with other tools.
+
+Every hop node is configurable at the same mode of a normal node.
+
+Following an example of a remote with 3 hop:
+
+```yaml
+
+    test:
+        host: 172.18.10.192
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: root
+        pass: pass
+        chain:
+            - host: 10.10.10.1
+              port: 22
+              protocol: tcp
+              auth_type: publickey
+              privatekey_file: /home/geaaru/.ssh/id_ed25519
+              user: geaaru
+            - host: 10.10.20.1
+              port: 22
+              protocol: tcp
+              auth_type: password
+              user: user2
+              pass: mypass
+            - host: 10.10.30.1
+              port: 22
+              protocol: tcp
+              auth_type: publickey
+              privatekey_file: /home/geaaru/.ssh/id_ed25519
+              user: user3
+```
+
+In the example the node 172.18.10.192 (port 22) is reachable through three hops:
+  - hop1: geaaru@10.10.10.1:22
+  - hop2: user2@10.10.20.1:22
+  - hop3: user3@10.10.30.1:22
+
+The SSL channel created over the hop3 is later used to reach 172.18.10.192.
+
+It's also possible define a local port that is used to manage connection to the
+final node:
+
+```
+```yaml
+
+    test:
+        host: 172.18.10.192
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: root
+        pass: pass
+        # Define the local port used as bridge of the all hops.
+        # If this option is not defined the local port is allocated
+        # dynamically.
+        tun_local_port: 20000
+        # Define the local address (localhost, keep empty for all interfaces)
+        tun_local_addr: "localhost"
+        # Enable local binding.
+        tun_local_bind: true
+        chain:
+            - host: 10.10.10.1
+              port: 22
+              protocol: tcp
+              auth_type: publickey
+              privatekey_file: /home/geaaru/.ssh/id_ed25519
+              user: geaaru
+            - host: 10.10.20.1
+              port: 22
+              protocol: tcp
+              auth_type: password
+              user: user2
+              pass: mypass
+            - host: 10.10.30.1
+              port: 22
+              protocol: tcp
+              auth_type: publickey
+              privatekey_file: /home/geaaru/.ssh/id_ed25519
+              user: user3
+```
+
+The information about hops are visible in debug mode:
+
+```
+$ ssh-compose shell test --debug --without-envs
+[test] Connecting to first hop at 10.10.10.1:22...
+[test] Connecting to hop 2 at 10.10.20.1:22...
+[test] Connecting to hop 3 at 10.10.30.1:22...
+[test] Binding local tunnel at localhost:20000...
+[test] Connecting at 127.0.0.1:20000 to reach 172.18.10.192:22...
+test ~ #
+```
+
+
+
 ## A simple example
 
 Considering a simple example where I want to upgrade the Ubuntu and Macaroni OS nodes

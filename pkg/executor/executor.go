@@ -5,19 +5,37 @@ See AUTHORS and LICENSE for the license details and contributors.
 package executor
 
 import (
+	"context"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
+	"sync"
 
+	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 	"github.com/MottainaiCI/ssh-compose/pkg/specs"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
+
+type TunnelHop struct {
+	// Ssh connection protocol. Valid values: tcp,tcp4,tcp6,unix
+	ConnProtocol string
+	Host         string
+	Port         int
+
+	User           string
+	Pass           string
+	PrivateKey     string
+	PrivateKeyPass string
+
+	Client *ssh.Client
+}
 
 type SshCExecutor struct {
 	Endpoint string
@@ -46,6 +64,16 @@ type SshCExecutor struct {
 
 	// ConfigDir of SSHC_CONF
 	ConfigDir string
+
+	// Context used to manage all SSL sessions
+	Ctx    context.Context
+	Cancel context.CancelFunc
+
+	TunnelChain     []*TunnelHop
+	TunnelLocalPort int
+	TunnelLocalAddr string
+	TunnelLocalBind bool
+	LocalListener   net.Listener
 }
 
 type SshCSession struct {
@@ -65,6 +93,34 @@ func NewSshCSession(name string, s *ssh.Session) *SshCSession {
 func (s *SshCSession) GetName() string             { return s.Name }
 func (s *SshCSession) GetRawSession() *ssh.Session { return s.Session }
 
+func NewTunnelHop(r *specs.Remote) (*TunnelHop, error) {
+	ans := &TunnelHop{
+		ConnProtocol: r.Protocol,
+		User:         r.User,
+		Host:         r.Host,
+		Port:         r.Port,
+	}
+
+	if r.AuthMethod == specs.AuthMethodPassword {
+		ans.Pass = r.Pass
+	} else {
+		ans.PrivateKeyPass = r.PrivateKeyPass
+
+		if r.PrivateKeyFile != "" {
+			data, err := os.ReadFile(r.PrivateKeyFile)
+			if err != nil {
+				return ans, err
+			}
+
+			ans.PrivateKey = string(data)
+		} else {
+			ans.PrivateKey = r.PrivateKeyRaw
+		}
+	}
+
+	return ans, nil
+}
+
 func NewSshCExecutor(endpoint, host string, port int) *SshCExecutor {
 	return &SshCExecutor{
 		Endpoint:          endpoint,
@@ -80,6 +136,7 @@ func NewSshCExecutor(endpoint, host string, port int) *SshCExecutor {
 		Emitter:           NewSshCEmitter(),
 		TTYOpOSpeed:       14400, // input speed = 14.4kbaud
 		TTYOpISpeed:       14400, // output speed = 14.4kbaud
+		TunnelLocalAddr:   "localhost",
 	}
 }
 
@@ -102,17 +159,31 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 		} else {
 			ans.PrivateKey = r.PrivateKeyRaw
 		}
-
 	}
+
+	ans.TunnelLocalPort = r.TunLocalPort
+	ans.TunnelLocalAddr = r.TunLocalAddr
+	ans.TunnelLocalBind = r.TunLocalBind
+
+	if r.HasChain() {
+		for _, cr := range r.GetChain() {
+			tun, err := NewTunnelHop(&cr)
+			if err != nil {
+				return ans, err
+			}
+			ans.TunnelChain = append(ans.TunnelChain, tun)
+		}
+	}
+
 	return ans, nil
 }
 
-func (s *SshCExecutor) getSigner() (ssh.Signer, error) {
+func (s *SshCExecutor) getSigner(privateKey, privateKeyPass string) (ssh.Signer, error) {
 	var err error
 	var signer ssh.Signer
 
 	// Analyze key to check is valid and/or encrypted.
-	pemblock, _ := pem.Decode([]byte(s.PrivateKey))
+	pemblock, _ := pem.Decode([]byte(privateKey))
 	if pemblock == nil {
 		return nil, fmt.Errorf("Pem decode failed, no key found")
 	}
@@ -171,12 +242,12 @@ func (s *SshCExecutor) getSigner() (ssh.Signer, error) {
 		}
 	} else {
 		// OPENSSH are not detected as PEM encrypted.
-		if s.PrivateKeyPass == "" {
-			signer, err = ssh.ParsePrivateKey([]byte(s.PrivateKey))
+		if privateKeyPass == "" {
+			signer, err = ssh.ParsePrivateKey([]byte(privateKey))
 		} else {
 			signer, err = ssh.ParsePrivateKeyWithPassphrase(
-				[]byte(s.PrivateKey),
-				[]byte(s.PrivateKeyPass),
+				[]byte(privateKey),
+				[]byte(privateKeyPass),
 			)
 		}
 
@@ -214,35 +285,262 @@ func (s *SshCExecutor) Close() {
 	if s.Client != nil {
 		s.Client.Close()
 		s.Client = nil
+
+		// Call context cancel
+		s.Cancel()
+
+		if len(s.TunnelChain) > 0 {
+			// Close tunnels session in the reverse order
+			for i := len(s.TunnelChain) - 1; i > 0; i-- {
+				s.TunnelChain[i].Client.Close()
+			}
+
+			if s.TunnelLocalBind {
+				s.LocalListener.Close()
+			}
+		}
+
 	}
 }
 
-func (s *SshCExecutor) Setup() error {
-	var err error
+func (s *SshCExecutor) BuildChain() (*ssh.Client, error) {
+	logger := log.GetDefaultLogger()
 
+	var client *ssh.Client
+	var err error
+	var wg sync.WaitGroup
+
+	for idx := range s.TunnelChain {
+
+		conf, err := s.getSshClientConfig(
+			s.TunnelChain[idx].User,
+			s.TunnelChain[idx].Pass,
+			s.TunnelChain[idx].PrivateKey,
+			s.TunnelChain[idx].PrivateKeyPass)
+		if err != nil {
+			return nil, err
+		}
+
+		if idx == 0 {
+			// POST: First hop, creating direct dial connection.
+
+			logger.DebugC(fmt.Sprintf(
+				"[%s] Connecting to first hop at %s:%d...",
+				s.Endpoint, s.TunnelChain[idx].Host, s.TunnelChain[idx].Port))
+
+			client, err = ssh.Dial(s.TunnelChain[idx].ConnProtocol,
+				strings.Join([]string{
+					s.TunnelChain[idx].Host, ":",
+					fmt.Sprintf("%d", s.TunnelChain[idx].Port)}, ""), conf)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// POST: hop >=2 -> we need to using the previous hop ssh client.
+
+			logger.DebugC(fmt.Sprintf(
+				"[%s] Connecting to hop %d at %s:%d...",
+				s.Endpoint, idx+1, s.TunnelChain[idx].Host, s.TunnelChain[idx].Port))
+
+			targetAddr := fmt.Sprintf("%s:%d", s.TunnelChain[idx].Host,
+				s.TunnelChain[idx].Port)
+
+			// Create connection dialer (through the previous hop client)
+			conn, err := client.Dial(s.TunnelChain[idx].ConnProtocol, targetAddr)
+			if err != nil {
+				return nil, err
+			}
+
+			connCh, chans, reqs, err := ssh.NewClientConn(conn, targetAddr, conf)
+			if err != nil {
+				return nil, err
+			}
+
+			client = ssh.NewClient(connCh, chans, reqs)
+		}
+
+		s.TunnelChain[idx].Client = client
+	}
+
+	if s.TunnelLocalBind {
+		// Creating local binding port in order to easily use
+		// the tunnel from external tools.
+
+		// Create the local listening port binding for
+		// final ssh connection.
+		listenAddr := fmt.Sprintf("%s:%d", s.TunnelLocalAddr, s.TunnelLocalPort)
+		logger.DebugC(fmt.Sprintf(
+			"[%s] Binding local tunnel at %s...", s.Endpoint, listenAddr))
+
+		s.LocalListener, err = net.Listen("tcp", listenAddr)
+		if err != nil {
+			return client, err
+		}
+
+		// Client connection callback
+		handleClientCb := func(ctx context.Context, localConn net.Conn,
+			sshClient *ssh.Client, target, protocol string, wg *sync.WaitGroup) {
+
+			defer wg.Done()
+			defer localConn.Close()
+
+			remoteConn, err := sshClient.Dial(protocol, target)
+			if err != nil {
+				logger.Warning(fmt.Sprintf(
+					"[%s] failed to dial target %s for incoming connection %s: %s",
+					s.Endpoint, target, localConn.RemoteAddr().String(),
+					err.Error()))
+				return
+			}
+			defer remoteConn.Close()
+
+			done := make(chan struct{})
+
+			// Crete goroutine to manage outcoming data
+			go func() {
+				io.Copy(remoteConn, localConn)
+				if c, ok := remoteConn.(interface{ CloseWrite() error }); ok {
+					c.CloseWrite()
+				} else {
+					remoteConn.Close()
+				}
+				done <- struct{}{}
+			}()
+
+			// Create goroutine to manage incoming data
+			go func() {
+				io.Copy(localConn, remoteConn)
+				localConn.Close()
+				done <- struct{}{}
+			}()
+
+			select {
+			case <-ctx.Done():
+			case <-done:
+				<-done
+			}
+
+		}
+
+		acceptCb := func() {
+			targetAddr := fmt.Sprintf("%s:%d", s.Host, s.Port)
+			for {
+				conn, err := s.LocalListener.Accept()
+				if err != nil {
+					select {
+					case <-s.Ctx.Done():
+						logger.DebugC(fmt.Sprintf("[%s] listener closed, shutting down.",
+							s.Endpoint))
+						wg.Wait()
+						return
+					default:
+						logger.DebugC(fmt.Sprintf("[%s] accept error from %s: %s",
+							s.Endpoint, conn.RemoteAddr().String(), err.Error()))
+						continue
+					}
+				}
+				wg.Add(1)
+				go handleClientCb(s.Ctx, conn, client, targetAddr, s.ConnProtocol, &wg)
+			}
+		}
+
+		go acceptCb()
+	}
+
+	return client, nil
+}
+
+func (s *SshCExecutor) getSshClientConfig(user, pass,
+	privateKey, privateKeyPass string) (*ssh.ClientConfig, error) {
 	conf := &ssh.ClientConfig{
-		User:            s.User,
+		User:            user,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // XXX: Security issue
 	}
 
-	if s.Pass != "" {
+	if pass != "" {
 		conf.Auth = []ssh.AuthMethod{
-			ssh.Password(s.Pass),
+			ssh.Password(pass),
 			ssh.KeyboardInteractive(s.sshInteractive),
 		}
 	} else {
-		signer, err := s.getSigner()
+		signer, err := s.getSigner(privateKey, privateKeyPass)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		conf.Auth = []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		}
+
 	}
 
-	s.Client, err = ssh.Dial(s.ConnProtocol,
-		strings.Join([]string{s.Host, ":", fmt.Sprintf("%d", s.Port)}, ""), conf)
+	return conf, nil
+}
+
+func (s *SshCExecutor) Setup() error {
+	var err error
+	var targetAddr string
+	logger := log.GetDefaultLogger()
+
+	if s.Client != nil {
+		// Nothing to do.
+		return nil
+	}
+
+	// Create the context used to manage
+	// all SSL sessions.
+	s.Ctx, s.Cancel = context.WithCancel(context.Background())
+
+	conf, err := s.getSshClientConfig(s.User, s.Pass, s.PrivateKey, s.PrivateKeyPass)
+	if err != nil {
+		return err
+	}
+
+	if len(s.TunnelChain) > 0 {
+		tunClient, err := s.BuildChain()
+		if err != nil {
+			return err
+		}
+
+		if s.TunnelLocalBind {
+
+			targetAddr = fmt.Sprintf("%s", s.LocalListener.Addr().String())
+			logger.DebugC(fmt.Sprintf(
+				"[%s] Connecting at %s to reach %s:%d...",
+				s.Endpoint, targetAddr, s.Host, s.Port))
+
+			s.Client, err = ssh.Dial(s.ConnProtocol, targetAddr, conf)
+
+		} else {
+
+			targetAddr = fmt.Sprintf("%s:%d", s.Host, s.Port)
+
+			logger.DebugC(fmt.Sprintf(
+				"[%s] Connecting to %s ...", s.Endpoint, targetAddr))
+
+			// Create connection dialer (through the previous hop client)
+			conn, err := tunClient.Dial(s.ConnProtocol, targetAddr)
+			if err != nil {
+				return err
+			}
+
+			connCh, chans, reqs, err := ssh.NewClientConn(conn, targetAddr, conf)
+			if err != nil {
+				return err
+			}
+
+			s.Client = ssh.NewClient(connCh, chans, reqs)
+		}
+
+	} else {
+		targetAddr = fmt.Sprintf("%s:%d", s.Host, s.Port)
+
+		logger.DebugC(fmt.Sprintf(
+			"[%s] Connecting to %s ...", s.Endpoint, targetAddr))
+
+		s.Client, err = ssh.Dial(s.ConnProtocol, targetAddr, conf)
+
+	}
 
 	return err
 }

@@ -38,6 +38,12 @@ type Remote struct {
 
 	Labels  []string          `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Options map[string]string `json:"options,omitempty" yaml:"options,omitempty"`
+
+	Chain []Remote `json:"chain,omitempty" yaml:"chain,omitempty"`
+	// Local port for tunnel
+	TunLocalPort int    `json:"tun_local_port,omitempty" yaml:"tun_local_port,omitempty"`
+	TunLocalAddr string `json:"tun_local_addr,omitempty" yaml:"tun_local_addr,omitempty"`
+	TunLocalBind bool   `json:"tun_local_bind,omitempty" yaml:"tun_local_bind,omitempty"`
 }
 
 func NewRemote(host, protocol, authMethod string, port int) *Remote {
@@ -51,6 +57,7 @@ func NewRemote(host, protocol, authMethod string, port int) *Remote {
 		PrivateKeyRaw:  "",
 		User:           "",
 		Pass:           "",
+		TunLocalBind:   false,
 	}
 }
 
@@ -59,6 +66,7 @@ func (r *Remote) SetPrivateKeyPass(p string) { r.PrivateKeyPass = p }
 func (r *Remote) SetPrivateKeyRaw(p string)  { r.PrivateKeyRaw = p }
 func (r *Remote) SetUser(u string)           { r.User = u }
 func (r *Remote) SetPass(p string)           { r.Pass = p }
+func (r *Remote) SetTunLocalPort(port int)   { r.TunLocalPort = port }
 
 func (r *Remote) GetHost() string           { return r.Host }
 func (r *Remote) GetPort() int              { return r.Port }
@@ -69,6 +77,12 @@ func (r *Remote) GetPrivateKeyPass() string { return r.PrivateKeyPass }
 func (r *Remote) GetPrivateKeyRaw() string  { return r.PrivateKeyRaw }
 func (r *Remote) GetUser() string           { return r.User }
 func (r *Remote) GetPass() string           { return r.Pass }
+func (r *Remote) GetTunLocalPort() int      { return r.TunLocalPort }
+func (r *Remote) GetTunLocalBind() bool     { return r.TunLocalBind }
+func (r *Remote) GetTunLocalAddr() string   { return r.TunLocalAddr }
+func (r *Remote) GetChain() []Remote        { return r.Chain }
+
+func (r *Remote) HasChain() bool { return len(r.Chain) > 0 }
 
 func (r *Remote) GetOption(o string) string {
 	if r.Options != nil {
@@ -95,6 +109,21 @@ func (r *Remote) HasLabel(l string) bool {
 
 func (r *Remote) GetLabels() []string           { return r.Labels }
 func (r *Remote) GetOptions() map[string]string { return r.Options }
+
+func (r *Remote) Sanitize() {
+	if r.GetProtocol() == "" {
+		r.Protocol = "tcp"
+	}
+	if r.GetAuthMethod() == "" {
+		r.AuthMethod = "publickey"
+	}
+
+	if r.HasChain() {
+		for t := range r.Chain {
+			r.Chain[t].Sanitize()
+		}
+	}
+}
 
 func NewRemotesConfig() *RemotesConfig {
 	return &RemotesConfig{
@@ -142,12 +171,7 @@ func (rc *RemotesConfig) GetRemote(remote string) *Remote {
 
 func (rc *RemotesConfig) Sanitize() {
 	for k := range rc.Remotes {
-		if rc.Remotes[k].GetProtocol() == "" {
-			rc.Remotes[k].Protocol = "tcp"
-		}
-		if rc.Remotes[k].GetAuthMethod() == "" {
-			rc.Remotes[k].AuthMethod = "publickey"
-		}
+		rc.Remotes[k].Sanitize()
 	}
 }
 

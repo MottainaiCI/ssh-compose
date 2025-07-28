@@ -28,3 +28,27 @@ remotes:
         auth_type: password
         user: root
         pass: qwe123
+
+    agent-apns:
+        host: 172.22.97.34
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: root
+        pass: qwe123
+        tun_local_port: 20000
+        #tun_local_addr: 192.168.0.92
+        tun_local_addr: "localhost"
+        tun_local_bind: true
+        chain:
+          - host: 192.168.61.139
+            port: 22
+            auth_type: password
+            user: root
+            pass: qwe123
+          - host: 192.168.61.134
+            port: 22
+            auth_type: password
+            user: root
+            pass: qwe123
+
