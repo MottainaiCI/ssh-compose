@@ -90,6 +90,7 @@ remotes:
         port: 22
         protocol: tcp
         auth_type: password
+        timeout_secs: 30
         user: root
         pass: pass
 ```
@@ -211,7 +212,6 @@ $ ssh-compose shell test --debug --without-envs
 [test] Connecting at 127.0.0.1:20000 to reach 172.18.10.192:22...
 test ~ #
 ```
-
 
 
 ## A simple example
