@@ -63,7 +63,7 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDevice(nodeName, command strin
 
 		// Get time to device to write the prompt. Maybe could be
 		// set in the remote config option.
-		time.Sleep(400 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 
 		n, err := session.stdoutPipe.Read(buff)
 		if err != nil {
