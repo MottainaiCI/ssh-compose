@@ -56,12 +56,14 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 			}
 
 			skipSync, _ := cmd.Flags().GetBool("skip-sync")
+			skipCompile, _ := cmd.Flags().GetBool("skip-compile")
 
 			composer.SetFlagsDisabled(disabledFlags)
 			composer.SetFlagsEnabled(enabledFlags)
 			composer.SetGroupsDisabled(disabledGroups)
 			composer.SetGroupsEnabled(enabledGroups)
 			composer.SetSkipSync(skipSync)
+			composer.SetSkipCompile(skipCompile)
 
 			projects := args[0:]
 
@@ -127,6 +129,7 @@ func newApplyCommand(config *specs.SshComposeConfig) *cobra.Command {
 	flags.StringSliceVar(&varsFiles, "vars-file", []string{},
 		"Add additional environments vars file.")
 	flags.Bool("skip-sync", false, "Disable sync of files.")
+	flags.Bool("skip-compile", false, "Disable compile of templates.")
 
 	return cmd
 }

@@ -588,6 +588,7 @@ func (i *SshCInstance) ApplyCommand(c *specs.SshCCommand, proj *specs.SshCProjec
 	i.SetGroupsDisabled(c.DisableGroups)
 	i.SetGroupsEnabled(c.EnableGroups)
 	i.SetSkipSync(c.SkipSync)
+	i.SetSkipCompile(c.SkipCompile)
 
 	return nil
 }
