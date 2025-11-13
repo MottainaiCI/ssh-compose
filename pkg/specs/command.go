@@ -20,6 +20,7 @@ func (c *SshCCommand) GetEnableGroups() []string      { return c.EnableGroups }
 func (c *SshCCommand) GetDisableGroups() []string     { return c.DisableFlags }
 func (c *SshCCommand) GetVarFiles() []string          { return c.VarFiles }
 func (c *SshCCommand) GetSkipSync() bool              { return c.SkipSync }
+func (c *SshCCommand) GetSkipCompile() bool           { return c.SkipCompile }
 func (c *SshCCommand) GetDestroy() bool               { return c.Destroy }
 func (c *SshCCommand) SetEnableGroups(list []string)  { c.EnableGroups = list }
 func (c *SshCCommand) SetDisableGroups(list []string) { c.DisableGroups = list }

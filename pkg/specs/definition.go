@@ -138,8 +138,9 @@ type SshCCommand struct {
 	Project     string `json:"project" yaml:"project"`
 	ApplyAlias  bool   `json:"apply_alias,omitempty" yaml:"apply_alias,omitempty"`
 
-	SkipSync bool `json:"skip_sync,omitempty" yaml:"skip_sync,omitempty"`
-	Destroy  bool `json:"destroy,omitempty" yaml:"destroy,omitempty"`
+	SkipSync    bool `json:"skip_sync,omitempty" yaml:"skip_sync,omitempty"`
+	SkipCompile bool `json:"skip_compile,omitempty" yaml:"skip_compile,omitempty"`
+	Destroy     bool `json:"destroy,omitempty" yaml:"destroy,omitempty"`
 
 	EnableFlags  []string `json:"enable_flags,omitempty" yaml:"enable_flags,omitempty"`
 	DisableFlags []string `json:"disable_flags,omitempty" yaml:"disable_flags,omitempty"`

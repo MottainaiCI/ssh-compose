@@ -35,10 +35,14 @@ func (i *SshCInstance) ApplyNode(node *specs.SshCNode,
 	// We need reload variables updated from out2var/err2var hooks.
 	compiler.InitVars()
 
-	// Compile node templates
-	err = template.CompileNodeFiles(*node, compiler, template.CompilerOpts{})
-	if err != nil {
-		return err
+	if len(node.ConfigTemplates) > 0 && !i.SkipCompile {
+
+		// Compile node templates
+		err = template.CompileNodeFiles(*node, compiler, template.CompilerOpts{})
+		if err != nil {
+			return err
+		}
+
 	}
 
 	if len(node.SyncResources) > 0 && !i.SkipSync {

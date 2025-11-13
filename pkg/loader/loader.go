@@ -15,6 +15,7 @@ type SshCInstance struct {
 	Logger         *log.SshCLogger
 	Environments   []specs.SshCEnvironment
 	SkipSync       bool
+	SkipCompile    bool
 	FlagsDisabled  []string
 	FlagsEnabled   []string
 	GroupsEnabled  []string
@@ -68,6 +69,8 @@ func (i *SshCInstance) GetEnvironments() *[]specs.SshCEnvironment {
 
 func (i *SshCInstance) SetSkipSync(v bool)          { i.SkipSync = v }
 func (i *SshCInstance) GetSkipSync() bool           { return i.SkipSync }
+func (i *SshCInstance) SetSkipCompile(v bool)       { i.SkipCompile = v }
+func (i *SshCInstance) GetSkipCompile() bool        { return i.SkipCompile }
 func (i *SshCInstance) GetGroupsEnabled() []string  { return i.GroupsEnabled }
 func (i *SshCInstance) GetGroupsDisabled() []string { return i.GroupsDisabled }
 func (i *SshCInstance) SetGroupsEnabled(groups []string) {
