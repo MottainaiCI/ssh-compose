@@ -71,7 +71,7 @@ func (e *SshCExecutor) RunCommandWithOutput(nodeName, command string, envs map[s
 	runArgs := ""
 	if len(entryPoint) > 0 {
 		runArgs = strings.Join(entryPoint, " ")
-		runArgs += fmt.Sprintf("'%s'", command)
+		runArgs += fmt.Sprintf(" '%s'", command)
 	} else {
 		runArgs = command
 	}
