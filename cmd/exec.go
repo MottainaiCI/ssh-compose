@@ -5,11 +5,13 @@ See AUTHORS and LICENSE for the license details and contributors.
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
 
 	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
+	"github.com/MottainaiCI/ssh-compose/pkg/helpers"
 	loader "github.com/MottainaiCI/ssh-compose/pkg/loader"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 
@@ -56,59 +58,81 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 			}
 			defer executor.Close()
 
-			session, err := executor.GetSession("my-session")
-			if err != nil {
-				logger.Fatal("Error on get session:" + err.Error() + "\n")
-			}
+			if remote.CiscoDevice {
+				dSec, _ := cmd.Flags().GetInt("deadline-secs")
+				var outBuffer, errBuffer bytes.Buffer
+				envs := make(map[string]string, 0)
+				runArgs := strings.Join(args[1:], " ")
 
-			if !withoutEnvs {
-				err = session.Setenv(fmt.Sprintf("%s_VERSION",
-					config.GetGeneral().EnvSessionPrefix),
-					specs.SSH_COMPOSE_VERSION)
+				_, err := executor.RunCommandWithOutputOnCiscoDeviceWithDS(
+					remoteName,
+					runArgs, envs,
+					helpers.NewNopCloseWriter(&outBuffer),
+					helpers.NewNopCloseWriter(&errBuffer),
+					[]string{},
+					dSec,
+				)
 				if err != nil {
-					logger.Debug("Error on set version env", err.Error())
+					logger.Fatal("error on execute command ", err.Error())
 				}
 
-				if len(envs) > 0 {
-					for _, env := range envs {
-						e := specs.NewEnvVars()
-						err := e.AddKVAggregated(env)
-						if err != nil {
-							logger.Debug(fmt.Sprintf(
-								"Invalid env variable %s: %s", env, err.Error()))
-							continue
-						}
+				fmt.Print(outBuffer.String())
 
-						for k, v := range e.EnvVars {
-							err = session.Setenv(k, v.(string))
+			} else {
+				session, err := executor.GetSession("my-session")
+				if err != nil {
+					logger.Fatal("Error on get session:" + err.Error() + "\n")
+				}
+
+				if !withoutEnvs {
+					err = session.Setenv(fmt.Sprintf("%s_VERSION",
+						config.GetGeneral().EnvSessionPrefix),
+						specs.SSH_COMPOSE_VERSION)
+					if err != nil {
+						logger.Debug("Error on set version env", err.Error())
+					}
+
+					if len(envs) > 0 {
+						for _, env := range envs {
+							e := specs.NewEnvVars()
+							err := e.AddKVAggregated(env)
 							if err != nil {
 								logger.Debug(fmt.Sprintf(
-									"error on set env variable %s: %s", env, err.Error()))
+									"Invalid env variable %s: %s", env, err.Error()))
 								continue
 							}
-						}
 
+							for k, v := range e.EnvVars {
+								err = session.Setenv(k, v.(string))
+								if err != nil {
+									logger.Debug(fmt.Sprintf(
+										"error on set env variable %s: %s", env, err.Error()))
+									continue
+								}
+							}
+
+						}
 					}
 				}
-			}
 
-			// set input and output
-			session.Stdout = os.Stdout
-			session.Stdin = os.Stdin
-			session.Stderr = os.Stderr
+				// set input and output
+				session.Stdout = os.Stdout
+				session.Stdin = os.Stdin
+				session.Stderr = os.Stderr
 
-			runArgs := strings.Join(args[1:], " ")
+				runArgs := strings.Join(args[1:], " ")
 
-			logger.InfoC(
-				logger.Aurora.Italic(
-					logger.Aurora.BrightCyan(
-						fmt.Sprintf(">>> [%s] - %s - :coffee:",
-							remoteName, runArgs,
-						))))
+				logger.InfoC(
+					logger.Aurora.Italic(
+						logger.Aurora.BrightCyan(
+							fmt.Sprintf(">>> [%s] - %s - :coffee:",
+								remoteName, runArgs,
+							))))
 
-			err = session.Run(runArgs)
-			if err != nil {
-				logger.Fatal("error on execute command ", err.Error())
+				err = session.Run(runArgs)
+				if err != nil {
+					logger.Fatal("error on execute command ", err.Error())
+				}
 			}
 		},
 	}
@@ -118,6 +142,8 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 		"Avoid to set variables on session (ex SSH_COMPOSE_VERSION, etc.)")
 	pflags.StringSliceVar(&envs, "env", []string{},
 		"Append project environments in the format key=value.")
+	pflags.Int("deadline-secs", 3,
+		"Define the number of seconds wait for output. For cisco devices. Default 3.")
 
 	return cmd
 }

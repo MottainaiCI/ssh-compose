@@ -58,6 +58,8 @@ type SshCExecutor struct {
 	TTYOpISpeed uint32
 	TTYOpOSpeed uint32
 
+	Options map[string]string
+
 	User           string
 	Pass           string
 	PrivateKey     string
@@ -92,6 +94,7 @@ type SshCSession struct {
 	// Pipes
 	stdinPipe     io.WriteCloser
 	stdoutPipe    io.Reader
+	stderrPipe    io.Reader
 	stderrPipeBuf *bufio.Reader
 	stdoutPipeBuf *bufio.Reader
 
@@ -155,6 +158,7 @@ func NewSshCExecutor(endpoint, host string, port int) *SshCExecutor {
 		TTYOpOSpeed:       14400, // input speed = 14.4kbaud
 		TTYOpISpeed:       14400, // output speed = 14.4kbaud
 		TunnelLocalAddr:   "localhost",
+		Options:           make(map[string]string, 0),
 	}
 }
 
@@ -196,7 +200,24 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 		}
 	}
 
+	if len(r.Options) > 0 {
+		for k, v := range r.Options {
+			ans.Options[k] = v
+		}
+	}
+
 	return ans, nil
+}
+
+func (s *SshCExecutor) GetOption(o string) string {
+	if s.Options != nil {
+		for k, v := range s.Options {
+			if k == o {
+				return v
+			}
+		}
+	}
+	return ""
 }
 
 func (s *SshCExecutor) getSigner(privateKey, privateKeyPass string) (ssh.Signer, error) {
