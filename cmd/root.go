@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	cliName = `Copyright © 2024-2025 Mottainai - Daniele Rondina
+	cliName = `Copyright © 2024-2026 Mottainai - Daniele Rondina
 
 Mottainai - SSH Compose Integrator`
 )
