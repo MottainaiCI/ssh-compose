@@ -9,7 +9,7 @@ using SSH protocol.
 
 It permits to organize and trace all configuration steps of infrastructure and create test suites.
 
-All configuration files could be created at runtime through two different template engines: Mottainai or Jinja2 (require `j2cli` tool).
+All configuration files could be created at runtime through two different template engines: Mottainai (Helm engine) or Jinja2 (require `j2cli` tool).
 
 It's under heavy development phase and specification could be changed in the near future.
 
@@ -239,6 +239,11 @@ So, using the options `cisco_device` and `cisco_prompt`:
         cisco_device: true
         # Keep empty to automatically catch the prompt at login
         cisco_prompt: 3750-MYDEV#
+        options:
+          height: 500
+          width: 200
+          wait_ms: 80
+          deadline_secs: 15
 ```
 it's possible to execute commands to a cisco device and store the output in the logfile.
 
