@@ -319,11 +319,17 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 						// a command. We need to process the output but is
 						// at the moment just ignore. We run the command
 						// without check response.
-						res, err = executor.RunCommandWithOutputOnCiscoDevice(
+
+						// NOTE: The ena options need to be enable at the first hook
+						//       and atm we don't support exiting from the ena mode.
+						ciscoOpts := ssh_executor.NewCiscoCommandOpts(h.CiscoEna)
+
+						res, err = executor.RunCommandWithOutputOnCiscoDeviceWithDS(
 							node, cmds, envs,
 							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStdout(),
 							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStderr(),
-							h.Entrypoint)
+							h.Entrypoint,
+							ciscoOpts)
 
 					} else {
 

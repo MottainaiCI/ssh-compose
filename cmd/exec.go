@@ -60,6 +60,10 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 			if remote.CiscoDevice {
 				dSec, _ := cmd.Flags().GetInt("deadline-secs")
+				ciscoEna, _ := cmd.Flags().GetBool("cisco-ena")
+				opts := ssh_executor.NewCiscoCommandOpts(ciscoEna)
+				opts.OverrideDeadlineSecs = dSec
+
 				var outBuffer, errBuffer bytes.Buffer
 				envs := make(map[string]string, 0)
 				runArgs := strings.Join(args[1:], " ")
@@ -70,7 +74,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 					helpers.NewNopCloseWriter(&outBuffer),
 					helpers.NewNopCloseWriter(&errBuffer),
 					[]string{},
-					dSec,
+					opts,
 				)
 				if err != nil {
 					logger.Fatal("error on execute command ", err.Error())
@@ -144,6 +148,8 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 		"Append project environments in the format key=value.")
 	pflags.Int("deadline-secs", 3,
 		"Define the number of seconds wait for output. For cisco devices. Default 3.")
+	pflags.Bool("cisco-ena", false,
+		"The command requires cisca ena privileges (true) or not (false).")
 
 	return cmd
 }

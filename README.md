@@ -224,6 +224,11 @@ This means that it uses ssh.Shell session without having a result value
 of the executed command. More complex scenario could be created using
 ssh-compose Golang API with a specific application.
 
+It's possible define hooks using *ena* privileges but this option
+could be defined only in the first hook used for initialize the session.
+So, different project could be defined for the same device if it's
+needed to use *ena* privileges and not *ena* privileges.
+
 So, using the options `cisco_device` and `cisco_prompt`:
 ```
     cisco-3750:
@@ -244,6 +249,26 @@ So, using the options `cisco_device` and `cisco_prompt`:
           width: 200
           wait_ms: 80
           deadline_secs: 15
+
+    cisco-asa5585:
+        host: 10.10.50.2
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: pix
+        pass: cisco
+        cisco_device: true
+        # For ASA device keep a space at the end in the prompt
+        cisco_prompt: 'ASA5585/mynode> '
+        cisco_enaprompt: 'ASA5585/mynode# '
+        cisco_enapass: 'myenapass'
+        options:
+          height: 500
+          width: 200
+          wait_ms: 80
+          deadline_secs: 15
+          # Define the number of lines of the banner to skip.
+          banner_lines: 4
 ```
 it's possible to execute commands to a cisco device and store the output in the logfile.
 

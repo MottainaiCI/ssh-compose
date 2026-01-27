@@ -38,6 +38,9 @@ type SshCHook struct {
 	Flags      []string `json:"flags,omitempty" yaml:"flags,omitempty"`
 	Disable    bool     `json:"disable,omitempty" yaml:"disable,omitempty"`
 
+	// Cisco specific flags
+	CiscoEna bool `json:"cisco_ena,omitempty" yaml:"cisco_ena,omitempty"`
+
 	// Pull resources
 	PullResources      []*SshCSyncResource `json:"pull,omitempty" yaml:"pull,omitempty"`
 	PullKeepSourcePath bool                `json:"pull_keep_sourcepath,omitempty" yaml:"pull_keep_sourcepath,omitempty"`

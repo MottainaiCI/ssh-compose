@@ -16,6 +16,13 @@ import (
 const (
 	AuthMethodPassword  = "password"
 	AuthMethodPublickey = "publickey"
+
+	// Cisco specific options
+	OptionTermHeight   = "height"
+	OptionTermWidth    = "width"
+	OptionDeadlineSecs = "deadline_secs"
+	OptionWaitMs       = "wait_ms"
+	OptionBannerLines  = "banner_lines"
 )
 
 type RemotesConfig struct {
@@ -37,8 +44,10 @@ type Remote struct {
 	Pass           string `json:"pass,omitempty" yaml:"pass,omitempty"`
 	TimeoutSecs    *uint  `json:"timeout_secs,omitempty" yaml:"timeout_secs,omitempty"`
 	// Enable special single session mode for Cisco Device
-	CiscoDevice bool   `json:"cisco_device,omitempty" yaml:"cisco_device,omitempty"`
-	CiscoPrompt string `json:"cisco_prompt,omitempty" yaml:"cisco_prompt,omitempty"`
+	CiscoDevice    bool   `json:"cisco_device,omitempty" yaml:"cisco_device,omitempty"`
+	CiscoPrompt    string `json:"cisco_prompt,omitempty" yaml:"cisco_prompt,omitempty"`
+	CiscoEnaPrompt string `json:"cisco_enaprompt,omitempty" yaml:"cisco_enaprompt,omitempty"`
+	CiscoEnaPass   string `json:"cisco_enapass,omitempty" yaml:"cisco_enapass,omitempty"`
 
 	Labels  []string          `json:"labels,omitempty" yaml:"labels,omitempty"`
 	Options map[string]string `json:"options,omitempty" yaml:"options,omitempty"`
@@ -88,6 +97,8 @@ func (r *Remote) GetTunLocalPort() int      { return r.TunLocalPort }
 func (r *Remote) GetTunLocalBind() bool     { return r.TunLocalBind }
 func (r *Remote) GetTunLocalAddr() string   { return r.TunLocalAddr }
 func (r *Remote) GetCiscoPrompt() string    { return r.CiscoPrompt }
+func (r *Remote) GetCiscoEnaPrompt() string { return r.CiscoEnaPrompt }
+func (r *Remote) GetCiscoEnaPass() string   { return r.CiscoEnaPass }
 func (r *Remote) GetCiscoDevice() bool      { return r.CiscoDevice }
 func (r *Remote) GetChain() []Remote        { return r.Chain }
 
