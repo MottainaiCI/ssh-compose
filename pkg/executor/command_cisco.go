@@ -182,68 +182,68 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 						fmt.Sprintf(">>> [%s] - Using cisco prompt %s - :eye:", nodeName, session.CiscoPrompt)))))
 		}
 
-	}
+		if opts.WithEna {
+			// POST: The command requires ena privileges
 
-	if opts.WithEna {
-		// POST: The command requires ena privileges
+			// Send ena command on stdin
+			_, err = session.stdinPipe.Write([]byte("ena" + "\r\n"))
+			if err != nil {
+				return 1, fmt.Errorf("failed to write ena command: %w", err)
+			}
 
-		// Send ena command on stdin
-		_, err = session.stdinPipe.Write([]byte("ena" + "\r\n"))
-		if err != nil {
-			return 1, fmt.Errorf("failed to write ena command: %w", err)
-		}
+			// Read the sent command
+			line, _ := session.stdoutPipeBuf.ReadString('\n')
 
-		// Read the sent command
-		line, _ := session.stdoutPipeBuf.ReadString('\n')
-
-		output += line
-		// Read the ask password output
-		n, _ := session.stdoutPipeBuf.Read(buff)
-		line = string(buff[0:n])
-
-		output += line
-
-		if !strings.Contains(line, "Password:") {
-			return 1, fmt.Errorf("received invalid response for ena command: %s", line)
-		}
-
-		_, _ = session.stdinPipe.Write([]byte(e.CiscoEnaPass + "\r"))
-
-		// Ignoring Response **** \r\n
-		n, _ = session.stdoutPipeBuf.Read(buff)
-		output += string(buff[0:n])
-		// If i the password is not defined we send only \r\n and we need
-		// to parse Invalid Password. If the password is correct then
-		// in the buffer will arrive *****
-		if n > 2 && buff[0] == '\r' && buff[1] == '\n' {
-			return 1, fmt.Errorf("unexpected state on manage ena (%s)", string(buff[0:n]))
-		}
-
-		n, _ = session.stdoutPipeBuf.Read(buff)
-		output += string(buff[0:n])
-		if buff[0] == '\r' {
-			line = string(buff[1:n])
-		} else {
+			output += line
+			// Read the ask password output
+			n, _ := session.stdoutPipeBuf.Read(buff)
 			line = string(buff[0:n])
-		}
-		if strings.Contains(line, "Invalid password") {
-			return 1, fmt.Errorf("invalid ena credential")
+
+			output += line
+
+			if !strings.Contains(line, "Password:") {
+				return 1, fmt.Errorf("received invalid response for ena command: %s", line)
+			}
+
+			_, _ = session.stdinPipe.Write([]byte(e.CiscoEnaPass + "\r"))
+
+			// Ignoring Response **** \r\n
+			n, _ = session.stdoutPipeBuf.Read(buff)
+			output += string(buff[0:n])
+			// If i the password is not defined we send only \r\n and we need
+			// to parse Invalid Password. If the password is correct then
+			// in the buffer will arrive *****
+			if n > 2 && buff[0] == '\r' && buff[1] == '\n' {
+				return 1, fmt.Errorf("unexpected state on manage ena (%s)", string(buff[0:n]))
+			}
+
+			n, _ = session.stdoutPipeBuf.Read(buff)
+			output += string(buff[0:n])
+			if buff[0] == '\r' {
+				line = string(buff[1:n])
+			} else {
+				line = string(buff[0:n])
+			}
+			if strings.Contains(line, "Invalid password") {
+				return 1, fmt.Errorf("invalid ena credential")
+			}
+
+			// POST: if all works fine the line will contains the new prompt
+
+			session.CiscoEnaPrompt = line
+			if e.CiscoEnaPrompt != "" && session.CiscoEnaPrompt != e.CiscoEnaPrompt {
+				e.Emitter.WarnLog(false, fmt.Sprintf("[%s] Mismatch on ena prompt '%s' (session) != '%s' (config)",
+					e.Endpoint, session.CiscoEnaPrompt, e.CiscoEnaPrompt))
+			} else if e.CiscoEnaPrompt == "" {
+				e.Emitter.InfoLog(true, logger.Aurora.Bold(
+					logger.Aurora.Italic(
+						logger.Aurora.BrightCyan(
+							fmt.Sprintf(">>> [%s] - Using cisco ena prompt %s - :eye:", nodeName, session.CiscoEnaPrompt)))))
+			}
+
+			session.InEna = true
 		}
 
-		// POST: if all works fine the line will contains the new prompt
-
-		session.CiscoEnaPrompt = line
-		if e.CiscoEnaPrompt != "" && session.CiscoEnaPrompt != e.CiscoEnaPrompt {
-			e.Emitter.WarnLog(false, fmt.Sprintf("[%s] Mismatch on ena prompt '%s' (session) != '%s' (config)",
-				e.Endpoint, session.CiscoEnaPrompt, e.CiscoEnaPrompt))
-		} else if e.CiscoEnaPrompt == "" {
-			e.Emitter.InfoLog(true, logger.Aurora.Bold(
-				logger.Aurora.Italic(
-					logger.Aurora.BrightCyan(
-						fmt.Sprintf(">>> [%s] - Using cisco ena prompt %s - :eye:", nodeName, session.CiscoEnaPrompt)))))
-		}
-
-		session.InEna = true
 	}
 
 	e.Emitter.InfoLog(true, logger.Aurora.Bold(
