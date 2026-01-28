@@ -29,6 +29,7 @@ func NewGenKeyCommand(config *specs.SshComposeConfig) *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			lenKey, _ := cmd.Flags().GetUint64("length")
+			to, _ := cmd.Flags().GetString("to")
 
 			key := make([]byte, lenKey)
 			_, err := rand.Read(key)
@@ -37,12 +38,22 @@ func NewGenKeyCommand(config *specs.SshComposeConfig) *cobra.Command {
 				os.Exit(1)
 			}
 
-			fmt.Println(base64.StdEncoding.EncodeToString(key))
+			if to == "" {
+				fmt.Println(base64.StdEncoding.EncodeToString(key))
+			} else {
+				err = os.WriteFile(to, []byte(base64.StdEncoding.EncodeToString(key)), 0644)
+				if err != nil {
+					fmt.Println(fmt.Sprintf("Error on write file %s: %s",
+						to, err.Error()))
+					os.Exit(1)
+				}
+			}
 		},
 	}
 
 	pflags := cmd.Flags()
 	pflags.Uint64P("length", "l", 64, "Define the length of the key")
+	pflags.String("to", "", "Path of the keyfile to generate (stdout if not defined).")
 
 	return cmd
 }
