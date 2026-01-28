@@ -5,13 +5,17 @@ See AUTHORS and LICENSE for the license details and contributors.
 package loader
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 
 	helpers "github.com/MottainaiCI/ssh-compose/pkg/helpers"
+	helpers_render "github.com/MottainaiCI/ssh-compose/pkg/helpers/render"
+	helpers_sec "github.com/MottainaiCI/ssh-compose/pkg/helpers/security"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 )
 
@@ -52,7 +56,7 @@ func (i *SshCInstance) LoadEnvironments() error {
 
 			if i.Config.IsEnableRenderEngine() {
 				// Render file
-				renderOut, err := helpers.RenderContentWithTemplates(string(content),
+				renderOut, err := helpers_render.RenderContentWithTemplates(string(content),
 					i.Config.RenderValuesFile,
 					i.Config.RenderDefaultFile,
 					file.Name(),
@@ -80,6 +84,12 @@ func (i *SshCInstance) LoadEnvironments() error {
 			}
 
 			i.AddEnvironment(*env)
+
+			// Check for encrypted vars and decrypt it if possible
+			err = i.decodeEncryptedEnvVars(env)
+			if err != nil {
+				return err
+			}
 
 			i.Logger.Debug("Loaded environment file " + env.File)
 
@@ -120,7 +130,7 @@ func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
 
 			if i.Config.IsEnableRenderEngine() {
 				// Render file
-				renderOut, err := helpers.RenderContentWithTemplates(string(content),
+				renderOut, err := helpers_render.RenderContentWithTemplates(string(content),
 					i.Config.RenderValuesFile,
 					i.Config.RenderDefaultFile,
 					cfile,
@@ -171,7 +181,7 @@ func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
 
 				if i.Config.IsEnableRenderEngine() {
 					// Render file
-					renderOut, err := helpers.RenderContentWithTemplates(string(content),
+					renderOut, err := helpers_render.RenderContentWithTemplates(string(content),
 						i.Config.RenderValuesFile,
 						i.Config.RenderDefaultFile,
 						gfile,
@@ -348,7 +358,7 @@ func (i *SshCInstance) getHooks(hfile, hfileAbs string, proj *specs.SshCProject)
 
 	if i.Config.IsEnableRenderEngine() {
 		// Render file
-		renderOut, err := helpers.RenderContentWithTemplates(string(content),
+		renderOut, err := helpers_render.RenderContentWithTemplates(string(content),
 			i.Config.RenderValuesFile,
 			i.Config.RenderDefaultFile,
 			hfile,
@@ -401,7 +411,7 @@ func (i *SshCInstance) loadEnvFile(envBaseDir, efile string, proj *specs.SshCPro
 
 	if i.Config.IsEnableRenderEngine() {
 		// Render file
-		renderOut, err := helpers.RenderContentWithTemplates(string(content),
+		renderOut, err := helpers_render.RenderContentWithTemplates(string(content),
 			i.Config.RenderValuesFile,
 			i.Config.RenderDefaultFile,
 			efile,
@@ -423,4 +433,95 @@ func (i *SshCInstance) loadEnvFile(envBaseDir, efile string, proj *specs.SshCPro
 	}
 
 	return evars, nil
+}
+
+func (i *SshCInstance) decodeEncryptedEnvVars(env *specs.SshCEnvironment) error {
+
+	var err error
+	keyBytes := []byte{}
+
+	if i.Config.GetSecurity().Key != "" {
+		keyBytes, err = base64.StdEncoding.DecodeString(i.Config.GetSecurity().Key)
+		if err != nil {
+			return fmt.Errorf("error on decode base64 key: %s", err.Error())
+		}
+	}
+
+	for idx := range env.Projects {
+		for eidx := range env.Projects[idx].Environments {
+
+			if env.Projects[idx].Environments[eidx].Encrypted {
+
+				if i.Config.GetSecurity().Key == "" {
+					i.Logger.Warning("Found variables encrypted but no key available. Ignoring vars.")
+					goto skipDecode
+				}
+
+				// Decode encrypted content.
+				encryptedContent, err := base64.StdEncoding.DecodeString(
+					env.Projects[idx].Environments[eidx].EncryptedContent,
+				)
+				if err != nil {
+					i.Logger.Warning("ignoring error on decode base64 for %s: %s",
+						env.Projects[idx].Environments[eidx].EncryptedContent,
+						err.Error())
+					continue
+				}
+
+				dkaOpts := helpers_sec.NewDKAOptsDefault()
+				if i.Config.GetSecurity().DKAOpts != nil {
+					if i.Config.GetSecurity().DKAOpts.TimeIterations != nil {
+						dkaOpts.TimeIterations = *i.Config.GetSecurity().DKAOpts.TimeIterations
+					}
+					if i.Config.GetSecurity().DKAOpts.MemoryUsage != nil {
+						dkaOpts.MemoryUsage = *i.Config.GetSecurity().DKAOpts.MemoryUsage
+					}
+					if i.Config.GetSecurity().DKAOpts.KeyLength != nil {
+						dkaOpts.KeyLength = *i.Config.GetSecurity().DKAOpts.KeyLength
+					}
+					if i.Config.GetSecurity().DKAOpts.Parallelism != nil {
+						dkaOpts.Parallelism = *i.Config.GetSecurity().DKAOpts.Parallelism
+					}
+				}
+				decodedBytes, err := helpers_sec.Decrypt(encryptedContent, keyBytes, dkaOpts)
+				if err != nil {
+					i.Logger.Warning("ignoring error on decrypt content %s: %s",
+						env.Projects[idx].Environments[eidx].EncryptedContent,
+						err.Error())
+					continue
+				}
+				// Render the decrypt content
+				renderOut, err := helpers_render.RenderContentWithTemplates(string(decodedBytes),
+					i.Config.RenderValuesFile,
+					i.Config.RenderDefaultFile,
+					"-",
+					i.Config.RenderEnvsVars,
+					i.Config.RenderTemplatesDirs,
+				)
+				if err != nil {
+					i.Logger.Error("Error on render encrypted vars",
+						string(decodedBytes),
+					)
+					return err
+				}
+
+				evars, err := specs.EnvVarsFromYaml([]byte(renderOut))
+				if err != nil {
+					i.Logger.Debug(fmt.Sprintf(
+						"On parse decrypted vars content %s:\n%s",
+						renderOut, err.Error()))
+					continue
+				}
+
+				env.Projects[idx].Environments[eidx].EnvVars = evars.EnvVars
+
+			}
+
+		}
+
+	}
+
+skipDecode:
+
+	return nil
 }

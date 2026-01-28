@@ -83,12 +83,16 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 		"Show hooks commands output or not.")
 	pflags.BoolP("debug", "d", config.Viper.GetBool("general.debug"),
 		"Enable debug output.")
+	pflags.String("keyfile", "", "Overrife keyfile path for decryption.")
+	pflags.String("key", "", "Overrife key for decryption.")
 
 	config.Viper.BindPFlag("config", pflags.Lookup("config"))
 	config.Viper.BindPFlag("render_default_file", pflags.Lookup("render-default"))
 	config.Viper.BindPFlag("render_values_file", pflags.Lookup("render-values"))
 	config.Viper.BindPFlag("general.debug", pflags.Lookup("debug"))
 	config.Viper.BindPFlag("logging.cmds_output", pflags.Lookup("cmds-output"))
+	config.Viper.BindPFlag("security.keyfile", pflags.Lookup("keyfile"))
+	config.Viper.BindPFlag("security.key", pflags.Lookup("key"))
 
 	rootCmd.AddCommand(
 		NewCompileCommand(config),
@@ -100,6 +104,7 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 		newGroupCommand(config),
 		newApplyCommand(config),
 		newFileCommand(config),
+		newSecurityCommand(config),
 		newValidateCommand(config),
 		newDiagnoseCommand(config),
 		NewTunnelCommand(config),
@@ -154,6 +159,19 @@ func Execute() {
 					os.Exit(1)
 				}
 			}
+
+			// Load key decryption key if available keyfile
+			if config.GetSecurity().Keyfile != "" && config.GetSecurity().Key == "" {
+				// NOTE: if the Key is present it wins.
+				content, err := os.ReadFile(config.GetSecurity().Keyfile)
+				if err != nil {
+					fmt.Println(fmt.Sprintf("error on read keyfile %s: %s",
+						config.GetSecurity().Keyfile, err.Error()))
+					os.Exit(1)
+				}
+				config.GetSecurity().Key = string(content)
+			}
+
 		},
 	}
 

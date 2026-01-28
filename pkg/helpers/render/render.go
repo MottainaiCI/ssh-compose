@@ -2,7 +2,7 @@
 Copyright © 2024-2025 Daniele Rondina <geaaru@macaronios.org>
 See AUTHORS and LICENSE for the license details and contributors.
 */
-package helpers
+package helpers_render
 
 import (
 	"fmt"
@@ -67,11 +67,21 @@ func RenderContentWithTemplates(
 		return "", errors.New("Both render files are missing")
 	}
 
+	// Avoid dep cycles importing helpers
+	exists := func(name string) bool {
+		if _, err := os.Stat(name); err != nil {
+			if os.IsNotExist(err) {
+				return false
+			}
+		}
+		return true
+	}
+
 	values := make(map[string]interface{}, 0)
 	d := make(map[string]interface{}, 0)
 
 	if valuesFile != "" {
-		if !Exists(valuesFile) {
+		if !exists(valuesFile) {
 			return "", errors.New(fmt.Sprintf(
 				"Render value file %s not existing ", valuesFile))
 		}
@@ -88,7 +98,7 @@ func RenderContentWithTemplates(
 	}
 
 	if defaultFile != "" {
-		if !Exists(defaultFile) {
+		if !exists(defaultFile) {
 			return "", errors.New(fmt.Sprintf(
 				"Render value file %s not existing ", defaultFile))
 		}

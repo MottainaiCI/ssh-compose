@@ -19,14 +19,28 @@ const (
 type SshComposeConfig struct {
 	Viper *v.Viper `yaml:"-" json:"-"`
 
-	General         SshCGeneral `mapstructure:"general" json:"general,omitempty" yaml:"general,omitempty"`
-	Logging         SshCLogging `mapstructure:"logging" json:"logging,omitempty" yaml:"logging,omitempty"`
-	EnvironmentDirs []string    `mapstructure:"env_dirs,omitempty" json:"env_dirs,omitempty" yaml:"env_dirs,omitempty"`
+	General         SshCGeneral  `mapstructure:"general" json:"general,omitempty" yaml:"general,omitempty"`
+	Logging         SshCLogging  `mapstructure:"logging" json:"logging,omitempty" yaml:"logging,omitempty"`
+	Security        SshCSecurity `mapstructure:"security" json:"security,omitempty" yaml:"security,omitempty"`
+	EnvironmentDirs []string     `mapstructure:"env_dirs,omitempty" json:"env_dirs,omitempty" yaml:"env_dirs,omitempty"`
 
 	RenderDefaultFile   string                 `mapstructure:"render_default_file,omitempty" json:"render_default_file,omitempty" yaml:"render_default_file,omitempty"`
 	RenderValuesFile    string                 `mapstructure:"render_values_file,omitempty" json:"render_values_file,omitempty" yaml:"render_values_file,omitempty"`
 	RenderEnvsVars      map[string]interface{} `mapstructure:"-" json:"-" yaml:"-"`
 	RenderTemplatesDirs []string               `mapstructure:"render_templates_dirs,omitempty" json:"render_templates_dirs,omitempty" yaml:"render_templates_dirs,omitempty"`
+}
+
+type SshCSecurity struct {
+	Keyfile string       `mapstructure:"keyfile" json:"keyfile,omitempty" yaml:"keyfile,omitempty"`
+	Key     string       `mapstructure:"key" json:"key,omitempty" yaml:"key,omitempty"`
+	DKAOpts *SshCDKAOpts `mapstructure:"dka_opts" json:"dka_opts,omitempty" yaml:"dka_opts,omitempty"`
+}
+
+type SshCDKAOpts struct {
+	TimeIterations *uint32 `mapstructure:"time_iterations" json:"time_iterations,omitempty" yaml:"time_iterations,omitempty"`
+	MemoryUsage    *uint32 `mapstructure:"memory_usage" json:"memory_usage,omitempty" yaml:"memory_usage,omitempty"`
+	KeyLength      *uint32 `mapstructure:"key_length" json:"key_length,omitempty" yaml:"key_length,omitempty"`
+	Parallelism    *uint8  `mapstructure:"parallelism" json:"parallelism,omitempty" yaml:"parallelism,omitempty"`
 }
 
 type SshCGeneral struct {
@@ -97,6 +111,10 @@ func (c *SshComposeConfig) GetEnvironmentDirs() []string {
 
 func (c *SshComposeConfig) GetLogging() *SshCLogging {
 	return &c.Logging
+}
+
+func (c *SshComposeConfig) GetSecurity() *SshCSecurity {
+	return &c.Security
 }
 
 func (c *SshComposeConfig) IsEnableRenderEngine() bool {
