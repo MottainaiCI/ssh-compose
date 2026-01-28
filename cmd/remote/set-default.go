@@ -45,7 +45,7 @@ func NewSetDefaultCommand(config *specs.SshComposeConfig) *cobra.Command {
 			remotes.SetDefault(remoteName)
 
 			// Write config
-			err = remotes.Write()
+			err = remotes.Write(config)
 			if err != nil {
 				logger.Fatal("error on update remote config file:", err.Error())
 			}

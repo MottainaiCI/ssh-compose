@@ -23,6 +23,7 @@ func newSecurityCommand(config *specs.SshComposeConfig) *cobra.Command {
 		NewDecryptCommand(config),
 		NewEncryptCommand(config),
 		NewGenKeyCommand(config),
+		NewRemotesCommand(config),
 	)
 	return cmd
 }

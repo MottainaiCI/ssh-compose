@@ -46,6 +46,7 @@ func NewSshCInstance(config *specs.SshComposeConfig) (*SshCInstance, error) {
 
 	ans.Remotes, err = specs.LoadRemotesConfig(
 		config.GetGeneral().RemotesConfDir,
+		config,
 	)
 
 	if err == nil {

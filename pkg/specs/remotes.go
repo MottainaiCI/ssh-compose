@@ -5,10 +5,13 @@ See AUTHORS and LICENSE for the license details and contributors.
 package specs
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	helpers_sec "github.com/MottainaiCI/ssh-compose/pkg/helpers/security"
 
 	"gopkg.in/yaml.v3"
 )
@@ -26,9 +29,11 @@ const (
 )
 
 type RemotesConfig struct {
-	File          string             `json:"-" yaml:"-"`
-	DefaultRemote string             `json:"default-remote,omitempty" yaml:"default-remote,omitempty"`
-	Remotes       map[string]*Remote `json:"remotes,omitempty" yaml:"remotes,omitempty"`
+	File             string             `json:"-" yaml:"-"`
+	DefaultRemote    string             `json:"default-remote,omitempty" yaml:"default-remote,omitempty"`
+	Remotes          map[string]*Remote `json:"remotes,omitempty" yaml:"remotes,omitempty"`
+	Encrypted        bool               `json:"encrypted,omitempty" yaml:"encrypted,omitempty"`
+	EncryptedContent string             `json:"enc_content,omitempty" yaml:"enc_content,omitempty"`
 }
 
 type Remote struct {
@@ -163,13 +168,68 @@ func RemotesConfigFromYaml(data []byte, file string) (*RemotesConfig, error) {
 	return ans, nil
 }
 
-func RemotesConfigFromFile(file string) (*RemotesConfig, error) {
+func RemotesConfigFromFile(file string, config *SshComposeConfig) (*RemotesConfig, error) {
 	content, err := os.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
 
-	return RemotesConfigFromYaml(content, file)
+	ans, err := RemotesConfigFromYaml(content, file)
+	if err != nil {
+		return nil, err
+	}
+
+	if ans.Encrypted {
+		if config.GetSecurity().Key == "" {
+			return nil, fmt.Errorf("Found remotes encrypted but no key defined!")
+		}
+		keyBytes, err := base64.StdEncoding.DecodeString(config.GetSecurity().Key)
+		if err != nil {
+			return nil, fmt.Errorf("error on decode base64 key: %s", err.Error())
+		}
+
+		// Decode encrypted content.
+		encryptedContent, err := base64.StdEncoding.DecodeString(
+			ans.EncryptedContent,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error on decode base64 for file %s:\n%s",
+				file, err.Error())
+		}
+
+		dkaOpts := helpers_sec.NewDKAOptsDefault()
+		if config.GetSecurity().DKAOpts != nil {
+			if config.GetSecurity().DKAOpts.TimeIterations != nil {
+				dkaOpts.TimeIterations = *config.GetSecurity().DKAOpts.TimeIterations
+			}
+			if config.GetSecurity().DKAOpts.MemoryUsage != nil {
+				dkaOpts.MemoryUsage = *config.GetSecurity().DKAOpts.MemoryUsage
+			}
+			if config.GetSecurity().DKAOpts.KeyLength != nil {
+				dkaOpts.KeyLength = *config.GetSecurity().DKAOpts.KeyLength
+			}
+			if config.GetSecurity().DKAOpts.Parallelism != nil {
+				dkaOpts.Parallelism = *config.GetSecurity().DKAOpts.Parallelism
+			}
+		}
+		decodedBytes, err := helpers_sec.Decrypt(encryptedContent, keyBytes, dkaOpts)
+		if err != nil {
+			return nil, fmt.Errorf("ignoring error on decrypt content of the file %s: %s",
+				file, err.Error())
+		}
+
+		remotesDecrypted, err := RemotesConfigFromYaml(decodedBytes, file)
+		if err != nil {
+			return nil, fmt.Errorf("error on parse decoded content of the file %s: %s",
+				file, err.Error())
+		}
+
+		ans.Remotes = remotesDecrypted.Remotes
+		ans.DefaultRemote = remotesDecrypted.DefaultRemote
+		ans.EncryptedContent = ""
+	}
+
+	return ans, nil
 }
 
 func (rc *RemotesConfig) SetDefault(remote string) { rc.DefaultRemote = remote }
@@ -203,7 +263,7 @@ func (rc *RemotesConfig) DelRemote(name string) {
 	delete(rc.Remotes, name)
 }
 
-func (rc *RemotesConfig) Write() error {
+func (rc *RemotesConfig) Write(config *SshComposeConfig) error {
 	if rc.File == "" {
 		return fmt.Errorf("Remotes Config without file path")
 	}
@@ -211,6 +271,52 @@ func (rc *RemotesConfig) Write() error {
 	data, err := yaml.Marshal(rc)
 	if err != nil {
 		return err
+	}
+
+	if rc.Encrypted {
+
+		if config.GetSecurity().Key == "" {
+			return fmt.Errorf("no key available to write remotes config")
+		}
+
+		keyBytes, err := base64.StdEncoding.DecodeString(config.GetSecurity().Key)
+		if err != nil {
+			fmt.Println("error on decode key: %s", err.Error())
+			os.Exit(1)
+		}
+
+		dkaOpts := helpers_sec.NewDKAOptsDefault()
+		if config.GetSecurity().DKAOpts != nil {
+			if config.GetSecurity().DKAOpts.TimeIterations != nil {
+				dkaOpts.TimeIterations = *config.GetSecurity().DKAOpts.TimeIterations
+			}
+			if config.GetSecurity().DKAOpts.MemoryUsage != nil {
+				dkaOpts.MemoryUsage = *config.GetSecurity().DKAOpts.MemoryUsage
+			}
+			if config.GetSecurity().DKAOpts.KeyLength != nil {
+				dkaOpts.KeyLength = *config.GetSecurity().DKAOpts.KeyLength
+			}
+			if config.GetSecurity().DKAOpts.Parallelism != nil {
+				dkaOpts.Parallelism = *config.GetSecurity().DKAOpts.Parallelism
+			}
+		}
+		encryptedContent, err := helpers_sec.Encrypt(data, keyBytes, dkaOpts)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Error on encrypt content of the file %s: %s",
+				rc.File, err.Error()))
+			os.Exit(1)
+		}
+
+		// Create a new RemotesConfig where store encrypted data
+		erc := NewRemotesConfig()
+		erc.Encrypted = true
+		erc.EncryptedContent = base64.StdEncoding.EncodeToString(encryptedContent)
+
+		data, err = yaml.Marshal(erc)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return os.WriteFile(rc.File, data, 0644)

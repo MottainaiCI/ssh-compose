@@ -31,7 +31,8 @@ func GetSshCRemotesDefaultConfDir() (string, error) {
 	return configDir, nil
 }
 
-func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
+func LoadRemotesConfig(remotesconfdir string,
+	config *SshComposeConfig) (*RemotesConfig, error) {
 	var ans *RemotesConfig
 	var err error
 
@@ -42,7 +43,7 @@ func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
 
 		// Check if exists config.yml
 		if helpers.Exists(remotesconf) {
-			ans, err = RemotesConfigFromFile(remotesconf)
+			ans, err = RemotesConfigFromFile(remotesconf, config)
 			if err != nil {
 				return ans, err
 			}
@@ -63,7 +64,7 @@ func LoadRemotesConfig(remotesconfdir string) (*RemotesConfig, error) {
 
 		remotesconf := filepath.Join(sshcDir, "config.yml")
 		if helpers.Exists(remotesconf) {
-			ans, err = RemotesConfigFromFile(remotesconf)
+			ans, err = RemotesConfigFromFile(remotesconf, config)
 			if err != nil {
 				return ans, err
 			}
