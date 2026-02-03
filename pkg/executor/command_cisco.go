@@ -55,7 +55,7 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 	var present bool
 	var output string
 	firstLine := true
-	buff := make([]byte, 80)
+	buff := make([]byte, 1024)
 	logger := log.GetDefaultLogger()
 
 	// Retrieve height and width from remote option
