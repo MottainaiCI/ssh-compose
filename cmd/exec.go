@@ -28,6 +28,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 		Args:    cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			withoutEnvs, _ := cmd.Flags().GetBool("without-envs")
+			multipleCommands, _ := cmd.Flags().GetBool("multiple-commands")
 
 			remoteName := args[0]
 
@@ -66,21 +67,44 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 
 				var outBuffer, errBuffer bytes.Buffer
 				envs := make(map[string]string, 0)
-				runArgs := strings.Join(args[1:], " ")
 
-				_, err := executor.RunCommandWithOutputOnCiscoDeviceWithDS(
-					remoteName,
-					runArgs, envs,
-					helpers.NewNopCloseWriter(&outBuffer),
-					helpers.NewNopCloseWriter(&errBuffer),
-					[]string{},
-					opts,
-				)
-				if err != nil {
-					logger.Fatal("error on execute command ", err.Error())
+				if multipleCommands {
+
+					for i := 1; i < len(args); i++ {
+						runArgs := args[i]
+
+						_, err := executor.RunCommandWithOutputOnCiscoDeviceWithDS(
+							remoteName,
+							runArgs, envs,
+							helpers.NewNopCloseWriter(&outBuffer),
+							helpers.NewNopCloseWriter(&errBuffer),
+							[]string{},
+							opts,
+						)
+						if err != nil {
+							logger.Fatal("error on execute command ", err.Error())
+						}
+
+						fmt.Print(outBuffer.String())
+					}
+
+				} else {
+					runArgs := strings.Join(args[1:], " ")
+
+					_, err := executor.RunCommandWithOutputOnCiscoDeviceWithDS(
+						remoteName,
+						runArgs, envs,
+						helpers.NewNopCloseWriter(&outBuffer),
+						helpers.NewNopCloseWriter(&errBuffer),
+						[]string{},
+						opts,
+					)
+					if err != nil {
+						logger.Fatal("error on execute command ", err.Error())
+					}
+
+					fmt.Print(outBuffer.String())
 				}
-
-				fmt.Print(outBuffer.String())
 
 			} else {
 				session, err := executor.GetSession("my-session")
@@ -124,18 +148,38 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 				session.Stdin = os.Stdin
 				session.Stderr = os.Stderr
 
-				runArgs := strings.Join(args[1:], " ")
+				if multipleCommands {
 
-				logger.InfoC(
-					logger.Aurora.Italic(
-						logger.Aurora.BrightCyan(
-							fmt.Sprintf(">>> [%s] - %s - :coffee:",
-								remoteName, runArgs,
-							))))
+					for i := 1; i < len(args); i++ {
+						runArgs := args[i]
 
-				err = session.Run(runArgs)
-				if err != nil {
-					logger.Fatal("error on execute command ", err.Error())
+						logger.InfoC(
+							logger.Aurora.Italic(
+								logger.Aurora.BrightCyan(
+									fmt.Sprintf(">>> [%s] - %s - :coffee:",
+										remoteName, runArgs,
+									))))
+
+						err = session.Run(runArgs)
+						if err != nil {
+							logger.Fatal("error on execute command ", err.Error())
+						}
+					}
+
+				} else {
+					runArgs := strings.Join(args[1:], " ")
+
+					logger.InfoC(
+						logger.Aurora.Italic(
+							logger.Aurora.BrightCyan(
+								fmt.Sprintf(">>> [%s] - %s - :coffee:",
+									remoteName, runArgs,
+								))))
+
+					err = session.Run(runArgs)
+					if err != nil {
+						logger.Fatal("error on execute command ", err.Error())
+					}
 				}
 			}
 		},
@@ -150,6 +194,8 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 		"Define the number of seconds wait for output. For cisco devices. Default 3.")
 	pflags.Bool("cisco-ena", false,
 		"The command requires cisca ena privileges (true) or not (false).")
+	pflags.Bool("multiple-commands", false,
+		"Sending multiple commands with multiple strings.")
 
 	return cmd
 }
