@@ -13,7 +13,7 @@ import (
 const (
 	SSH_COMPOSE_CONFIGNAME = ".ssh-compose"
 	SSH_COMPOSE_ENV_PREFIX = "ssh_COMPOSE"
-	SSH_COMPOSE_VERSION    = `0.10.1`
+	SSH_COMPOSE_VERSION    = `0.10.2`
 )
 
 type SshComposeConfig struct {
