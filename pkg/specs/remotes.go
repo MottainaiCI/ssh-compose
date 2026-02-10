@@ -26,6 +26,7 @@ const (
 	OptionDeadlineSecs = "deadline_secs"
 	OptionWaitMs       = "wait_ms"
 	OptionBannerLines  = "banner_lines"
+	OptionNumLF        = "num_lf"
 )
 
 type RemotesConfig struct {

@@ -48,6 +48,7 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 	termW := 80
 	dlSec := 3
 	waitMs := 80
+	nLF := 1
 	bannerLines := 0
 
 	var session *SshCSession
@@ -97,6 +98,15 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 		blines, _ := strconv.Atoi(e.GetOption(specs.OptionBannerLines))
 		if blines > 0 {
 			bannerLines = blines
+		}
+	}
+
+	// Retrieve number of LF (line feed) to append in the command.
+	if e.GetOption(specs.OptionNumLF) != "" {
+		nlfopt, _ := strconv.Atoi(e.GetOption(specs.OptionNumLF))
+		if nlfopt > 1 {
+			logger.Debug(fmt.Sprintf("[%s] Using %d LF on suffix", e.Endpoint, nLF))
+			nLF = nlfopt
 		}
 	}
 
@@ -251,10 +261,15 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 			logger.Aurora.BrightCyan(
 				fmt.Sprintf(">>> [%s] - %s - :coffee:", nodeName, command)))))
 
-	// Send command through stdin
-	// I use two \n to force a new line in the prompt. We need to investigate in the
-	// different devices. This works with Cisco ASA 5565 and Cisco 3750
-	_, err = session.stdinPipe.Write([]byte(command + "\r\n\n"))
+	// Send command through stdin.
+	// The number of \n (LF) depends of devices. For example
+	// with ASA it's better two LF and on 3750 just one LF.
+	suffix := "\r"
+	for i := 0; i < nLF; i++ {
+		suffix += "\n"
+	}
+	_, err = session.stdinPipe.Write([]byte(command + suffix))
+
 	if err != nil {
 		return 1, fmt.Errorf("failed to write command %s: %s", command, err.Error())
 	}
