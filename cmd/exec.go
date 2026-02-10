@@ -86,6 +86,8 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 						}
 
 						fmt.Print(outBuffer.String())
+						outBuffer.Reset()
+						errBuffer.Reset()
 					}
 
 				} else {
