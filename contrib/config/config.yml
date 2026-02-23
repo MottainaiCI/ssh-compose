@@ -20,35 +20,48 @@ remotes:
         protocol: tcp
         auth_type: password
         user: root
-        pass: qwe123
+        pass: pass
     test2:
         host: 172.18.10.192
         port: 22
         protocol: tcp
         auth_type: password
         user: root
-        pass: qwe123
+        pass: pass
 
-    agent-apns:
-        host: 172.22.97.34
+    # Example of remote with hops:
+    # mynode -> 192.168.0.10 -> 192.168.0.20 -> 172.18.10.190
+    nodewithhops:
+        # Example report a simple network create
+        # with the LXD setup from Mottainai and the
+        # mottainai0 network using 172.18.0.0/23 net.
+        # Example: lxd-compose network create -a
+        host: 172.18.10.190
         port: 22
         protocol: tcp
         auth_type: password
         user: root
-        pass: qwe123
+        pass: pass
+        # This option add local port binding
+        # of the SSH session in order to reach
+        # the final node. This option is optional
+        # and used if you want use ssh and/or other
+        # commands over SSH with different tools.
         tun_local_port: 20000
-        #tun_local_addr: 192.168.0.92
         tun_local_addr: "localhost"
         tun_local_bind: true
         chain:
-          - host: 192.168.61.139
+          # First host/container node
+          - host: 192.168.0.10
             port: 22
             auth_type: password
             user: root
-            pass: qwe123
-          - host: 192.168.61.134
+            pass: pass
+
+          # Second host/container node
+          - host: 192.168.0.20
             port: 22
-            auth_type: password
+            auth_type: publickey
             user: root
-            pass: qwe123
+            privatekey_file: ./mysecrets/ssh-key
 
