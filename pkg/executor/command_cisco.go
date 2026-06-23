@@ -170,7 +170,6 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 		if err != nil {
 			return 1, fmt.Errorf("failed on read prompt: %v", err)
 		}
-
 		// Ignore the first CR + LN send by device before the prompt
 		// or only CR after the banner.
 		// This seems happens not always.
@@ -193,6 +192,7 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 		}
 
 		if opts.WithEna {
+
 			// POST: The command requires ena privileges
 
 			// Send ena command on stdin
@@ -278,17 +278,30 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 	duration, _ := time.ParseDuration(fmt.Sprintf("%ds", dlSec))
 	deadline := time.Now().Add(duration)
 	usedPrompt := session.CiscoPrompt
+	usedPromptHasFinalSpace := false
 	if session.InEna {
 		usedPrompt = session.CiscoEnaPrompt
 	}
 
-	logger.Debug(fmt.Sprintf("[%s] Ena %v. Using prompt '%s'",
-		e.Endpoint, session.InEna, usedPrompt))
+	if len(usedPrompt) > 2 {
+		// NOTE: Cisco ASA Firepower 2130 send a space in the initial prompt but
+		//       not at the end of the execution of a command.
+		//       So it's better check if HasPrefix match also without it
+		usedPromptHasFinalSpace = usedPrompt[len(usedPrompt)-1:len(usedPrompt)] == " "
+	}
+
+	logger.Debug(fmt.Sprintf("[%s] Ena %v, usedPromptHasFinalSpace %v. Using prompt '%s'",
+		e.Endpoint, session.InEna, usedPromptHasFinalSpace, usedPrompt))
 
 	waitMsDuration, _ := time.ParseDuration(fmt.Sprintf("%dms", waitMs))
+	i := 1
 	for {
 		if time.Now().After(deadline) {
 			break
+		}
+
+		if i > 2 && firstLine {
+			logger.Debug(fmt.Sprintf("[%s] First line never skipped."), e.Endpoint)
 		}
 
 		line, err := session.stdoutPipeBuf.ReadString('\n')
@@ -298,8 +311,10 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 
 		if firstLine {
 			// Skip first line with the written command.
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, command) || strings.HasPrefix(line, usedPrompt+command) {
+			lineTrim := strings.TrimSpace(line)
+			if strings.HasPrefix(lineTrim, command) ||
+				strings.HasPrefix(lineTrim, usedPrompt+command) ||
+				(usedPromptHasFinalSpace && strings.HasPrefix(lineTrim, usedPrompt[0:len(usedPrompt)-1]+command)) {
 				firstLine = false
 				continue
 			}
@@ -307,7 +322,8 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 
 		output += line
 
-		if strings.HasPrefix(line, usedPrompt) {
+		if strings.HasPrefix(line, usedPrompt) ||
+			(usedPromptHasFinalSpace && strings.HasPrefix(line, usedPrompt[0:len(usedPrompt)-1])) {
 			break
 		}
 
@@ -319,6 +335,7 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 			if line[0] == '\r' {
 				line = line[1:]
 			}
+
 			if strings.HasPrefix(line, usedPrompt) {
 				break
 			}
