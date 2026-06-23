@@ -29,6 +29,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			withoutEnvs, _ := cmd.Flags().GetBool("without-envs")
 			multipleCommands, _ := cmd.Flags().GetBool("multiple-commands")
+			replaceCr, _ := cmd.Flags().GetBool("replace-cr")
 
 			remoteName := args[0]
 
@@ -85,7 +86,12 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 							logger.Fatal("error on execute command ", err.Error())
 						}
 
-						fmt.Print(outBuffer.String())
+						if replaceCr {
+							fmt.Print(strings.ReplaceAll(outBuffer.String(), "\r", "\n"))
+						} else {
+							fmt.Print(outBuffer.String())
+						}
+
 						outBuffer.Reset()
 						errBuffer.Reset()
 					}
@@ -105,7 +111,11 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 						logger.Fatal("error on execute command ", err.Error())
 					}
 
-					fmt.Print(outBuffer.String())
+					if replaceCr {
+						fmt.Print(strings.ReplaceAll(outBuffer.String(), "\r", "\n"))
+					} else {
+						fmt.Print(outBuffer.String())
+					}
 				}
 
 			} else {
@@ -198,6 +208,9 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 		"The command requires cisca ena privileges (true) or not (false).")
 	pflags.Bool("multiple-commands", false,
 		"Sending multiple commands with multiple strings.")
+
+	pflags.Bool("replace-cr", false,
+		"Replace CR with LN on output.")
 
 	return cmd
 }
