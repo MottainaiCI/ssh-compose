@@ -269,6 +269,8 @@ So, using the options `cisco_device` and `cisco_prompt`:
           deadline_secs: 15
           # Define the number of lines of the banner to skip.
           banner_lines: 4
+          # Show banner on stdout. By default is visible. (value != true means hide)
+          banner_visible: true
           num_lf: "2"
 ```
 it's possible to execute commands to a cisco device and store the output in the logfile.

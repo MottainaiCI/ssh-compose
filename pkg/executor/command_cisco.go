@@ -50,6 +50,7 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 	waitMs := 80
 	nLF := 1
 	bannerLines := 0
+	bannerShow := true
 
 	var session *SshCSession
 	var err error
@@ -110,6 +111,12 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 		}
 	}
 
+	// Retrieve banner_visible option. Set to false when != "true"
+	bannerVisible := e.GetOption(specs.OptionBannerVisible)
+	if bannerVisible != "true" {
+		bannerShow = false
+	}
+
 	// Always use the session with the name of the endpoint
 	session, present = e.Sessions[e.Endpoint]
 	if !present {
@@ -163,7 +170,9 @@ func (e *SshCExecutor) RunCommandWithOutputOnCiscoDeviceWithDS(nodeName, command
 			logger.Debug(fmt.Sprintf("[%s] Skipped banner:\n%s---",
 				e.Endpoint, banner))
 
-			output += banner
+			if bannerShow {
+				output += banner
+			}
 		}
 
 		n, err := session.stdoutPipeBuf.Read(buff)

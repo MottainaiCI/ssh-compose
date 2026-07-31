@@ -21,12 +21,13 @@ const (
 	AuthMethodPublickey = "publickey"
 
 	// Cisco specific options
-	OptionTermHeight   = "height"
-	OptionTermWidth    = "width"
-	OptionDeadlineSecs = "deadline_secs"
-	OptionWaitMs       = "wait_ms"
-	OptionBannerLines  = "banner_lines"
-	OptionNumLF        = "num_lf"
+	OptionTermHeight    = "height"
+	OptionTermWidth     = "width"
+	OptionDeadlineSecs  = "deadline_secs"
+	OptionWaitMs        = "wait_ms"
+	OptionBannerLines   = "banner_lines"
+	OptionBannerVisible = "banner_visible"
+	OptionNumLF         = "num_lf"
 )
 
 type RemotesConfig struct {
