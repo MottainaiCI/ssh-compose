@@ -52,10 +52,11 @@ type SshCExecutor struct {
 	Entrypoint        []string
 
 	// Cisco Device options
-	CiscoDevice    bool
-	CiscoPrompt    string
-	CiscoEnaPrompt string
-	CiscoEnaPass   string
+	CiscoDevice      bool
+	CiscoPromptRegex bool
+	CiscoPrompt      string
+	CiscoEnaPrompt   string
+	CiscoEnaPass     string
 
 	TTYOpISpeed uint32
 	TTYOpOSpeed uint32
@@ -172,6 +173,7 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 	ans.User = r.User
 	ans.CiscoDevice = r.CiscoDevice
 	ans.CiscoPrompt = r.CiscoPrompt
+	ans.CiscoPromptRegex = r.CiscoPromptRegex
 	ans.CiscoEnaPrompt = r.CiscoEnaPrompt
 	ans.CiscoEnaPass = r.CiscoEnaPass
 	if r.AuthMethod == specs.AuthMethodPassword {
