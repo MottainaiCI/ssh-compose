@@ -1,7 +1,6 @@
 # SSH Compose
 
 [![Build Status](https://github.com/MottainaiCI/ssh-compose/actions/workflows/push.yml/badge.svg)](https://github.com/MottainaiCI/ssh-compose/actions/workflows/push.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/MottainaiCI/ssh-compose)](https://goreportcard.com/report/github.com/MottainaiCI/ssh-compose)
 [![CodeQL](https://github.com/MottainaiCI/ssh-compose/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/MottainaiCI/ssh-compose/actions/workflows/codeql-analysis.yml)
 
 **ssh-compose** is the sister of the **lxd-compose** project and supplies a way to deploy a complex environment
@@ -229,6 +228,21 @@ could be defined only in the first hook used for initialize the session.
 So, different project could be defined for the same device if it's
 needed to use *ena* privileges and not *ena* privileges.
 
+Considering that for every Cisco devices there are different way to
+correctly login and run commands, from the release `v0.12.0` is been
+added the `cisco_profile` option to manage correctly the different devices.
+
+| Cisco Profile | Cisco Devices Verified    |
+|---------------|---------------------------|
+| general       | * ASA Firepower 2130      |
+|               | * Cisco 9500 Routers      |
+|               | * Cisco 4500 Routers      |
+|               | * Cisco 3750 Routers      |
+|               | * ASA 5585                |
+|---------------|---------------------------|
+| asa-fw-4k     | * ASA Firepower 4K Series |
+
+
 So, using the options `cisco_device` and `cisco_prompt`:
 ```
     cisco-3750:
@@ -272,6 +286,25 @@ So, using the options `cisco_device` and `cisco_prompt`:
           # Show banner on stdout. By default is visible. (value != true means hide)
           banner_visible: true
           num_lf: "2"
+
+    cisco-fw-4k:
+        host: 10.10.50.3
+        port: 22
+        protocol: tcp
+        auth_type: password
+        user: pix
+        pass: cisco
+        cisco_device: true
+        # For ASA device keep a space at the end in the prompt
+        cisco_prompt: 'ASA5585/mynode> '
+        cisco_enaprompt: 'ASA5585/mynode# '
+        cisco_enapass: 'myenapass'
+        options:
+          cisco_profile: "asa-fw-4k"
+          # Define the number of lines of the banner to skip.
+          banner_lines: 4
+          # Show banner on stdout. By default is visible. (value != true means hide)
+          banner_visible: true
 ```
 it's possible to execute commands to a cisco device and store the output in the logfile.
 
