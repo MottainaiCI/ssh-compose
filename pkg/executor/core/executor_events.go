@@ -2,7 +2,7 @@
 Copyright © 2024-2026 Daniele Rondina <geaaru@macaronios.org>
 See AUTHORS and LICENSE for the license details and contributors.
 */
-package executor
+package core
 
 const (
 	SshClientSetupDone    SshCExecutorEvent = "client-setup"

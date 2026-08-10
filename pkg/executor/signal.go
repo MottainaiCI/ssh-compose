@@ -9,12 +9,13 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/MottainaiCI/ssh-compose/pkg/executor/core"
 	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-func ResizeWindowHandler(sigs chan os.Signal, stdin *os.File, session *SshCSession) {
+func ResizeWindowHandler(sigs chan os.Signal, stdin *os.File, session *core.SshCSession) {
 	logger := log.GetDefaultLogger()
 	for true {
 		sig := <-sigs

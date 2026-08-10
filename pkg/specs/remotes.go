@@ -20,6 +20,8 @@ const (
 	AuthMethodPassword  = "password"
 	AuthMethodPublickey = "publickey"
 
+	OptionCiscoProfile = "cisco_profile"
+
 	// Cisco specific options
 	OptionTermHeight    = "height"
 	OptionTermWidth     = "width"

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
+	"github.com/MottainaiCI/ssh-compose/pkg/executor/core"
 	"github.com/MottainaiCI/ssh-compose/pkg/helpers"
 	loader "github.com/MottainaiCI/ssh-compose/pkg/loader"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
@@ -63,7 +64,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 			if remote.CiscoDevice {
 				dSec, _ := cmd.Flags().GetInt("deadline-secs")
 				ciscoEna, _ := cmd.Flags().GetBool("cisco-ena")
-				opts := ssh_executor.NewCiscoCommandOpts(ciscoEna)
+				opts := core.NewCiscoCommandOpts(ciscoEna)
 				opts.OverrideDeadlineSecs = dSec
 
 				var outBuffer, errBuffer bytes.Buffer
@@ -83,7 +84,7 @@ func NewExecCommand(config *specs.SshComposeConfig) *cobra.Command {
 							opts,
 						)
 						if err != nil {
-							logger.Fatal("error on execute command ", err.Error())
+							logger.Fatal("error on execute command: ", err.Error())
 						}
 
 						if replaceCr {

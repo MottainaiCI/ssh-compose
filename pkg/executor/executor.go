@@ -5,7 +5,6 @@ See AUTHORS and LICENSE for the license details and contributors.
 package executor
 
 import (
-	"bufio"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -17,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MottainaiCI/ssh-compose/pkg/executor/core"
 	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 	"github.com/MottainaiCI/ssh-compose/pkg/specs"
 
@@ -24,21 +24,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/terminal"
 )
-
-type TunnelHop struct {
-	// Ssh connection protocol. Valid values: tcp,tcp4,tcp6,unix
-	ConnProtocol string
-	Host         string
-	Port         int
-	TimeoutSecs  *uint
-
-	User           string
-	Pass           string
-	PrivateKey     string
-	PrivateKeyPass string
-
-	Client *ssh.Client
-}
 
 type SshCExecutor struct {
 	Endpoint string
@@ -71,9 +56,9 @@ type SshCExecutor struct {
 	Client     *ssh.Client
 	SftpClient *sftp.Client
 
-	Sessions map[string]*SshCSession
+	Sessions map[string]*core.SshCSession
 
-	Emitter SshCExecutorEmitter
+	Emitter core.SshCExecutorEmitter
 
 	// ConfigDir of SSHC_CONF
 	ConfigDir string
@@ -82,7 +67,7 @@ type SshCExecutor struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
 
-	TunnelChain     []*TunnelHop
+	TunnelChain     []*core.TunnelHop
 	TunnelLocalPort int
 	TunnelLocalAddr string
 	TunnelLocalBind bool
@@ -90,62 +75,7 @@ type SshCExecutor struct {
 	LocalListenerWg sync.WaitGroup
 }
 
-type SshCSession struct {
-	*ssh.Session
-	Name string
-
-	// Pipes
-	stdinPipe     io.WriteCloser
-	stdoutPipe    io.Reader
-	stderrPipe    io.Reader
-	stderrPipeBuf *bufio.Reader
-	stdoutPipeBuf *bufio.Reader
-
-	CiscoPrompt    string
-	CiscoEnaPrompt string
-	InEna          bool
-}
-
 type TermShellRestoreCb func() error
-
-func NewSshCSession(name string, s *ssh.Session) *SshCSession {
-	return &SshCSession{
-		Session: s,
-		Name:    name,
-	}
-}
-
-func (s *SshCSession) GetName() string             { return s.Name }
-func (s *SshCSession) GetRawSession() *ssh.Session { return s.Session }
-
-func NewTunnelHop(r *specs.Remote) (*TunnelHop, error) {
-	ans := &TunnelHop{
-		ConnProtocol: r.Protocol,
-		User:         r.User,
-		Host:         r.Host,
-		Port:         r.Port,
-		TimeoutSecs:  r.TimeoutSecs,
-	}
-
-	if r.AuthMethod == specs.AuthMethodPassword {
-		ans.Pass = r.Pass
-	} else {
-		ans.PrivateKeyPass = r.PrivateKeyPass
-
-		if r.PrivateKeyFile != "" {
-			data, err := os.ReadFile(r.PrivateKeyFile)
-			if err != nil {
-				return ans, err
-			}
-
-			ans.PrivateKey = string(data)
-		} else {
-			ans.PrivateKey = r.PrivateKeyRaw
-		}
-	}
-
-	return ans, nil
-}
 
 func NewSshCExecutor(endpoint, host string, port int) *SshCExecutor {
 	return &SshCExecutor{
@@ -158,8 +88,8 @@ func NewSshCExecutor(endpoint, host string, port int) *SshCExecutor {
 		Entrypoint:        []string{},
 		Client:            nil,
 		SftpClient:        nil,
-		Sessions:          make(map[string]*SshCSession, 0),
-		Emitter:           NewSshCEmitter(),
+		Sessions:          make(map[string]*core.SshCSession, 0),
+		Emitter:           core.NewSshCEmitter(),
 		TTYOpOSpeed:       14400, // input speed = 14.4kbaud
 		TTYOpISpeed:       14400, // output speed = 14.4kbaud
 		TunnelLocalAddr:   "localhost",
@@ -200,7 +130,7 @@ func NewSshCExecutorFromRemote(rname string, r *specs.Remote) (*SshCExecutor, er
 
 	if r.HasChain() {
 		for _, cr := range r.GetChain() {
-			tun, err := NewTunnelHop(&cr)
+			tun, err := core.NewTunnelHop(&cr)
 			if err != nil {
 				return ans, err
 			}
@@ -621,20 +551,20 @@ func (s *SshCExecutor) SetupSftp(opts ...sftp.ClientOption) error {
 	return nil
 }
 
-func (e *SshCExecutor) GetEmitter() SshCExecutorEmitter        { return e.Emitter }
-func (e *SshCExecutor) SetEmitter(emitter SshCExecutorEmitter) { e.Emitter = emitter }
-func (s *SshCExecutor) GetClient() *ssh.Client                 { return s.Client }
-func (s *SshCExecutor) GetSftpClient() *sftp.Client            { return s.SftpClient }
-func (s *SshCExecutor) GetEndpoint() string                    { return s.Endpoint }
-func (s *SshCExecutor) GetHost() string                        { return s.Host }
-func (s *SshCExecutor) GetPort() int                           { return s.Port }
-func (s *SshCExecutor) GetUser() string                        { return s.User }
-func (s *SshCExecutor) GetPass() string                        { return s.Pass }
-func (s *SshCExecutor) GetPrivateKey() string                  { return s.PrivateKey }
-func (s *SshCExecutor) GetPrivateKeyPass() string              { return s.PrivateKeyPass }
-func (s *SshCExecutor) GetConnProtocol() string                { return s.ConnProtocol }
-func (s *SshCExecutor) GetShowCmdsOutput() bool                { return s.ShowCmdsOutput }
-func (s *SshCExecutor) GetRuntimeCmdsOutput() bool             { return s.RuntimeCmdsOutput }
+func (e *SshCExecutor) GetEmitter() core.SshCExecutorEmitter        { return e.Emitter }
+func (e *SshCExecutor) SetEmitter(emitter core.SshCExecutorEmitter) { e.Emitter = emitter }
+func (s *SshCExecutor) GetClient() *ssh.Client                      { return s.Client }
+func (s *SshCExecutor) GetSftpClient() *sftp.Client                 { return s.SftpClient }
+func (s *SshCExecutor) GetEndpoint() string                         { return s.Endpoint }
+func (s *SshCExecutor) GetHost() string                             { return s.Host }
+func (s *SshCExecutor) GetPort() int                                { return s.Port }
+func (s *SshCExecutor) GetUser() string                             { return s.User }
+func (s *SshCExecutor) GetPass() string                             { return s.Pass }
+func (s *SshCExecutor) GetPrivateKey() string                       { return s.PrivateKey }
+func (s *SshCExecutor) GetPrivateKeyPass() string                   { return s.PrivateKeyPass }
+func (s *SshCExecutor) GetConnProtocol() string                     { return s.ConnProtocol }
+func (s *SshCExecutor) GetShowCmdsOutput() bool                     { return s.ShowCmdsOutput }
+func (s *SshCExecutor) GetRuntimeCmdsOutput() bool                  { return s.RuntimeCmdsOutput }
 
 func (s *SshCExecutor) RemoveSession(n string) error {
 	session, err := s.GetSession(n)
@@ -648,7 +578,7 @@ func (s *SshCExecutor) RemoveSession(n string) error {
 	return nil
 }
 
-func (s *SshCExecutor) ResetSession(n string) (*SshCSession, error) {
+func (s *SshCExecutor) ResetSession(n string) (*core.SshCSession, error) {
 	session, err := s.GetSession(n)
 	if err != nil {
 		return nil, err
@@ -669,7 +599,7 @@ func (s *SshCExecutor) ResetSession(n string) (*SshCSession, error) {
 	return sNew, nil
 }
 
-func (s *SshCExecutor) GetSession(n string) (*SshCSession, error) {
+func (s *SshCExecutor) GetSession(n string) (*core.SshCSession, error) {
 	if _, ok := s.Sessions[n]; ok {
 		return s.Sessions[n], nil
 	}
@@ -687,12 +617,12 @@ func (s *SshCExecutor) GetSession(n string) (*SshCSession, error) {
 		return nil, err
 	}
 
-	s.Sessions[n] = NewSshCSession(n, session)
+	s.Sessions[n] = core.NewSshCSession(n, session)
 
 	return s.Sessions[n], nil
 }
 
-func (s *SshCExecutor) GetShellSession(n, termType string, h, w int, echo bool) (*SshCSession, error) {
+func (s *SshCExecutor) GetShellSession(n, termType string, h, w int, echo bool) (*core.SshCSession, error) {
 	session, err := s.GetSession(n)
 	if err != nil {
 		return nil, err
@@ -718,7 +648,7 @@ func (s *SshCExecutor) GetShellSession(n, termType string, h, w int, echo bool) 
 }
 
 func (s *SshCExecutor) GetShellSessionWithTermSetup(n, termType string,
-	stdin *os.File, stdout, stderr io.Writer) (*SshCSession, TermShellRestoreCb, error) {
+	stdin *os.File, stdout, stderr io.Writer) (*core.SshCSession, TermShellRestoreCb, error) {
 	session, err := s.GetSession(n)
 	if err != nil {
 		return nil, nil, err

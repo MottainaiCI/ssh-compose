@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	ssh_executor "github.com/MottainaiCI/ssh-compose/pkg/executor"
+	"github.com/MottainaiCI/ssh-compose/pkg/executor/core"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
 	"github.com/MottainaiCI/ssh-compose/pkg/template"
 )
@@ -293,8 +294,8 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 					emitter := executor.GetEmitter()
 					res, err = executor.RunHostCommandWithOutput(
 						cmds, envs,
-						(emitter.(*ssh_executor.SshCEmitter)).GetHostWriterStdout(),
-						(emitter.(*ssh_executor.SshCEmitter)).GetHostWriterStderr(),
+						(emitter.(*core.SshCEmitter)).GetHostWriterStdout(),
+						(emitter.(*core.SshCEmitter)).GetHostWriterStderr(),
 						h.Entrypoint,
 					)
 				} else {
@@ -322,12 +323,12 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 
 						// NOTE: The ena options need to be enable at the first hook
 						//       and atm we don't support exiting from the ena mode.
-						ciscoOpts := ssh_executor.NewCiscoCommandOpts(h.CiscoEna)
+						ciscoOpts := core.NewCiscoCommandOpts(h.CiscoEna)
 
 						res, err = executor.RunCommandWithOutputOnCiscoDeviceWithDS(
 							node, cmds, envs,
-							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStdout(),
-							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStderr(),
+							(emitter.(*core.SshCEmitter)).GetSshWriterStdout(),
+							(emitter.(*core.SshCEmitter)).GetSshWriterStderr(),
 							h.Entrypoint,
 							ciscoOpts)
 
@@ -335,8 +336,8 @@ func (i *SshCInstance) ProcessHooks(hooks *[]specs.SshCHook, proj *specs.SshCPro
 
 						res, err = executor.RunCommandWithOutput(
 							node, cmds, envs,
-							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStdout(),
-							(emitter.(*ssh_executor.SshCEmitter)).GetSshWriterStderr(),
+							(emitter.(*core.SshCEmitter)).GetSshWriterStdout(),
+							(emitter.(*core.SshCEmitter)).GetSshWriterStderr(),
 							h.Entrypoint)
 
 					}
