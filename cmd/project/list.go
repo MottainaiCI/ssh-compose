@@ -66,12 +66,9 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 			} else {
 
 				table := tablewriter.NewWriter(os.Stdout)
-				table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-				table.SetCenterSeparator("|")
-				table.SetHeader([]string{
+				table.Header([]string{
 					"Project Name", "Description", "# Groups",
 				})
-				table.SetAutoWrapText(false)
 
 				for _, p := range projects {
 

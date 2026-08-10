@@ -88,16 +88,7 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 			} else {
 				if len(commands) > 0 {
 					table := tablewriter.NewWriter(os.Stdout)
-					table.SetBorders(tablewriter.Border{
-						Left:   true,
-						Top:    true,
-						Right:  true,
-						Bottom: true})
-					table.SetHeader([]string{"Command", "Project", "Description"})
-					table.SetColMinWidth(1, 10)
-					table.SetColMinWidth(2, 50)
-					table.SetColWidth(150)
-					table.SetAutoWrapText(false)
+					table.Header([]string{"Command", "Project", "Description"})
 
 					for _, c := range commands {
 						table.Append([]string{

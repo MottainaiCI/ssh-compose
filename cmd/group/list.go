@@ -84,12 +84,9 @@ func NewListCommand(config *specs.SshComposeConfig) *cobra.Command {
 			} else {
 
 				table := tablewriter.NewWriter(os.Stdout)
-				table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-				table.SetCenterSeparator("|")
-				table.SetHeader([]string{
+				table.Header([]string{
 					"Group Name", "Description", "# Nodes",
 				})
-				table.SetAutoWrapText(false)
 
 				for _, g := range groups {
 					table.Append([]string{
