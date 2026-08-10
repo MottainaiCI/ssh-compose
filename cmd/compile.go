@@ -62,6 +62,7 @@ func NewCompileCommand(config *specs.SshComposeConfig) *cobra.Command {
 				Sources:        sources,
 				GroupsEnabled:  enabledGroups,
 				GroupsDisabled: disabledGroups,
+				Concurrency:    config.GetGeneral().Concurrency,
 			}
 
 			projects := args

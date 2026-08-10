@@ -7,6 +7,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
@@ -85,11 +86,13 @@ func initCommand(rootCmd *cobra.Command, config *specs.SshComposeConfig) {
 		"Enable debug output.")
 	pflags.String("keyfile", "", "Overrife keyfile path for decryption.")
 	pflags.String("key", "", "Overrife key for decryption.")
+	pflags.Int("concurrency", runtime.NumCPU(), "Concurrency")
 
 	config.Viper.BindPFlag("config", pflags.Lookup("config"))
 	config.Viper.BindPFlag("render_default_file", pflags.Lookup("render-default"))
 	config.Viper.BindPFlag("render_values_file", pflags.Lookup("render-values"))
 	config.Viper.BindPFlag("general.debug", pflags.Lookup("debug"))
+	config.Viper.BindPFlag("general.concurrency", pflags.Lookup("concurrency"))
 	config.Viper.BindPFlag("logging.cmds_output", pflags.Lookup("cmds-output"))
 	config.Viper.BindPFlag("security.keyfile", pflags.Lookup("keyfile"))
 	config.Viper.BindPFlag("security.key", pflags.Lookup("key"))

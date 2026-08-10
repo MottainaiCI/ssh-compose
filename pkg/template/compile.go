@@ -7,19 +7,25 @@ Based on the lxd-compose code
 package template
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
+	"github.com/MottainaiCI/ssh-compose/pkg/helpers"
 	log "github.com/MottainaiCI/ssh-compose/pkg/logger"
 	specs "github.com/MottainaiCI/ssh-compose/pkg/specs"
+
+	"golang.org/x/sync/semaphore"
 )
 
 type CompilerOpts struct {
 	Sources        []string
 	GroupsEnabled  []string
 	GroupsDisabled []string
+	Concurrency    int
 }
 
 func (o *CompilerOpts) IsGroupEnabled(g string) bool {
@@ -88,7 +94,6 @@ func CompileAllProjectFiles(env *specs.SshCEnvironment, pName string, opts Compi
 		return err
 	}
 
-	// TODO: parallel elaboration
 	for _, group := range proj.Groups {
 
 		if !opts.IsGroupEnabled(group.Name) {
@@ -115,6 +120,7 @@ func CompileAllProjectFiles(env *specs.SshCEnvironment, pName string, opts Compi
 func CompileGroupFiles(group *specs.SshCGroup, compiler SshCTemplateCompiler, opts CompilerOpts) error {
 	var sourceFile, destFile string
 	var targets []specs.SshCConfigTemplate = []specs.SshCConfigTemplate{}
+	logger := log.GetDefaultLogger()
 
 	if len(opts.Sources) > 0 {
 		for _, s := range opts.Sources {
@@ -137,6 +143,14 @@ func CompileGroupFiles(group *specs.SshCGroup, compiler SshCTemplateCompiler, op
 	// Set node key with current group
 	(*compiler.GetVars())["group"] = group
 
+	waitGroup := &sync.WaitGroup{}
+	sem := semaphore.NewWeighted(int64(opts.Concurrency))
+	ctx := context.TODO()
+	var ch chan helpers.ChannelError = make(
+		chan helpers.ChannelError,
+		opts.Concurrency,
+	)
+
 	for _, s := range targets {
 		sourceFile = filepath.Join(envBaseAbs, s.Source)
 		if filepath.IsAbs(s.Destination) {
@@ -145,18 +159,57 @@ func CompileGroupFiles(group *specs.SshCGroup, compiler SshCTemplateCompiler, op
 			destFile = filepath.Join(envBaseAbs, s.Destination)
 		}
 
-		err := compiler.Compile(sourceFile, destFile)
-		if err != nil {
-			return err
-		}
+		logger.DebugC(
+			logger.Aurora.Italic(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> <%s> Compiling %s -> %s :coffee:",
+						group.GetName(), sourceFile, destFile))))
 
-		log.GetDefaultLogger().Info(" " + sourceFile + " -> " + destFile + " OK")
+		waitGroup.Add(1)
+		go compileRouting(compiler, ch, sem, waitGroup,
+			sourceFile, destFile, &ctx)
+	}
+
+	nTargets := len(targets)
+	fail := false
+	for i, s := range targets {
+		sourceFile = filepath.Join(envBaseAbs, s.Source)
+		if filepath.IsAbs(s.Destination) {
+			destFile = s.Destination
+		} else {
+			destFile = filepath.Join(envBaseAbs, s.Destination)
+		}
+		logger.DebugC(
+			logger.Aurora.Italic(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> <%s> Waiting %s -> %s :coffee:",
+						group.GetName(), sourceFile, destFile))))
+		resp := <-ch
+		if resp.Error != nil {
+			logger.Error(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> <%s> - [%2d/%2d] %s - %s :cross_mark:",
+						group.GetName(), i+1, nTargets, destFile, resp.Error.Error())))
+			fail = true
+		} else {
+			logger.InfoC(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> <%s> - [%2d/%2d] %s :check_mark:",
+						group.GetName(), i+1, nTargets, destFile)))
+		}
+	}
+
+	waitGroup.Wait()
+
+	if fail {
+		return fmt.Errorf("errors on compile group template files")
 	}
 
 	return nil
 }
 
 func CompileProjectFiles(proj *specs.SshCProject, compiler SshCTemplateCompiler, opts CompilerOpts) error {
+	logger := log.GetDefaultLogger()
 	var sourceFile, destFile string
 	var targets []specs.SshCConfigTemplate = []specs.SshCConfigTemplate{}
 
@@ -181,6 +234,14 @@ func CompileProjectFiles(proj *specs.SshCProject, compiler SshCTemplateCompiler,
 		return err
 	}
 
+	waitGroup := &sync.WaitGroup{}
+	sem := semaphore.NewWeighted(int64(opts.Concurrency))
+	ctx := context.TODO()
+	var ch chan helpers.ChannelError = make(
+		chan helpers.ChannelError,
+		opts.Concurrency,
+	)
+
 	for _, s := range targets {
 		sourceFile = filepath.Join(envBaseAbs, s.Source)
 		if filepath.IsAbs(s.Destination) {
@@ -188,22 +249,59 @@ func CompileProjectFiles(proj *specs.SshCProject, compiler SshCTemplateCompiler,
 		} else {
 			destFile = filepath.Join(envBaseAbs, s.Destination)
 		}
+		logger.DebugC(
+			logger.Aurora.Italic(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> (%s) Compiling %s -> %s :coffee:",
+						proj.GetName(), sourceFile, destFile))))
 
-		err := compiler.Compile(sourceFile, destFile)
-		if err != nil {
-			return err
+		waitGroup.Add(1)
+		go compileRouting(compiler, ch, sem, waitGroup,
+			sourceFile, destFile, &ctx)
+	}
+
+	nTargets := len(targets)
+	fail := false
+	for i, s := range targets {
+		sourceFile = filepath.Join(envBaseAbs, s.Source)
+		if filepath.IsAbs(s.Destination) {
+			destFile = s.Destination
+		} else {
+			destFile = filepath.Join(envBaseAbs, s.Destination)
 		}
+		logger.DebugC(
+			logger.Aurora.Italic(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> (%s) Waiting %s -> %s :coffee:",
+						proj.GetName(), sourceFile, destFile))))
+		resp := <-ch
+		if resp.Error != nil {
+			logger.Error(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> (%s) - [%2d/%2d] %s - %s :cross_mark:",
+						proj.GetName(), i+1, nTargets, destFile, resp.Error.Error())))
+			fail = true
+		} else {
+			logger.InfoC(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> (%s) - [%2d/%2d] %s :check_mark:",
+						proj.GetName(), i+1, nTargets, destFile)))
+		}
+	}
 
-		log.GetDefaultLogger().Info(" " + sourceFile + " -> " + destFile + " OK")
+	waitGroup.Wait()
+
+	if fail {
+		return fmt.Errorf("errors on compile project template files")
 	}
 
 	return nil
 }
 
 func CompileNodeFiles(node specs.SshCNode, compiler SshCTemplateCompiler, opts CompilerOpts) error {
+	logger := log.GetDefaultLogger()
 	var sourceFile, destFile, baseDir string
 	var targets []specs.SshCConfigTemplate = []specs.SshCConfigTemplate{}
-	logger := log.GetDefaultLogger()
 
 	if len(opts.Sources) > 0 {
 		for _, s := range opts.Sources {
@@ -250,6 +348,15 @@ func CompileNodeFiles(node specs.SshCNode, compiler SshCTemplateCompiler, opts C
 		baseDir = filepath.Join(envBaseAbs, node.SourceDir)
 	}
 
+	waitGroup := &sync.WaitGroup{}
+	sem := semaphore.NewWeighted(int64(opts.Concurrency))
+	ctx := context.TODO()
+	var ch chan helpers.ChannelError = make(
+		chan helpers.ChannelError,
+		opts.Concurrency,
+	)
+
+	nTargets := len(targets)
 	for idx, s := range targets {
 		sourceFile = filepath.Join(baseDir, s.Source)
 		if filepath.IsAbs(s.Destination) {
@@ -261,19 +368,80 @@ func CompileNodeFiles(node specs.SshCNode, compiler SshCTemplateCompiler, opts C
 		logger.DebugC(
 			logger.Aurora.Italic(
 				logger.Aurora.BrightCyan(
-					fmt.Sprintf(">>> [%s] Compiling %s -> %s :coffee:",
-						node.GetName(), sourceFile, destFile))))
+					fmt.Sprintf(">>> [%s] - [%2d/%2d] Compiling %s -> %s :coffee:",
+						node.GetName(), idx+1, nTargets, sourceFile, destFile))))
 
-		err := compiler.Compile(sourceFile, destFile)
-		if err != nil {
-			return err
+		waitGroup.Add(1)
+		go compileRouting(compiler, ch, sem, waitGroup,
+			sourceFile, destFile, &ctx)
+
+	}
+
+	fail := false
+	for i, s := range targets {
+		sourceFile = filepath.Join(baseDir, s.Source)
+		if filepath.IsAbs(s.Destination) {
+			destFile = s.Destination
+		} else {
+			destFile = filepath.Join(baseDir, s.Destination)
 		}
+		logger.DebugC(
+			logger.Aurora.Italic(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> [%s] Waiting %s -> %s :coffee:",
+						node.GetName(), sourceFile, destFile))))
+		resp := <-ch
+		if resp.Error != nil {
+			logger.Error(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> [%s] - [%2d/%2d] %s - %s :cross_mark:",
+						node.GetName(), i+1, nTargets, destFile, resp.Error.Error())))
+			fail = true
+		} else {
+			logger.InfoC(
+				logger.Aurora.BrightCyan(
+					fmt.Sprintf(">>> [%s] - [%2d/%2d] %s :check_mark:",
+						node.GetName(), i+1, nTargets, destFile)))
+		}
+	}
 
-		logger.InfoC(
-			logger.Aurora.BrightCyan(
-				fmt.Sprintf(">>> [%s] - [%2d/%2d] %s :check_mark:",
-					node.GetName(), idx+1, len(targets), destFile)))
+	waitGroup.Wait()
+
+	if fail {
+		return fmt.Errorf("errors on compile template files")
 	}
 
 	return nil
+}
+
+func compileRouting(compiler SshCTemplateCompiler,
+	channel chan helpers.ChannelError,
+	sem *semaphore.Weighted, waitGroup *sync.WaitGroup,
+	sourceFile, destFile string, ctx *context.Context) {
+
+	defer waitGroup.Done()
+	err := sem.Acquire(*ctx, 1)
+	if err != nil {
+		channel <- helpers.ChannelError{
+			Error:   fmt.Errorf("error on acquire semaphore: %s", err.Error()),
+			Closure: destFile,
+		}
+		return
+	}
+	defer sem.Release(1)
+
+	err = compiler.Compile(sourceFile, destFile)
+	if err != nil {
+		channel <- helpers.ChannelError{
+			Error:   err,
+			Closure: destFile,
+		}
+		return
+	}
+
+	channel <- helpers.ChannelError{
+		Error:   nil,
+		Closure: destFile,
+	}
+	return
 }

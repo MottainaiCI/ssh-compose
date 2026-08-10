@@ -5,6 +5,8 @@ See AUTHORS and LICENSE for the license details and contributors.
 package specs
 
 import (
+	"runtime"
+
 	v "github.com/spf13/viper"
 
 	"gopkg.in/yaml.v3"
@@ -47,6 +49,8 @@ type SshCGeneral struct {
 	Debug            bool   `mapstructure:"debug,omitempty" json:"debug,omitempty" yaml:"debug,omitempty"`
 	RemotesConfDir   string `mapstructure:"remotes_confdir,omitempty" json:"remotes_confdir,omitempty" yaml:"remotes_confdir,omitempty"`
 	EnvSessionPrefix string `mapstructure:"env_session_prefix,omitempty" json:"env_session_prefix,omitempty" yaml:"env_session_prefix,omitempty"`
+
+	Concurrency int `mapstructure:"concurrency,omitempty" json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
 }
 
 type SshCLogging struct {
@@ -88,6 +92,7 @@ func (c *SshComposeConfig) Clone() *SshComposeConfig {
 	ans.RenderTemplatesDirs = c.RenderTemplatesDirs
 
 	ans.General.Debug = c.General.Debug
+	ans.General.Concurrency = c.General.Concurrency
 
 	ans.Logging.Path = c.Logging.Path
 	ans.Logging.EnableLogFile = c.Logging.EnableLogFile
@@ -167,6 +172,7 @@ func (c *SshComposeConfig) SetRenderEnvs(envs []string) error {
 func GenDefault(viper *v.Viper) {
 	viper.SetDefault("general.debug", false)
 	viper.SetDefault("general.env_session_prefix", "SSH_COMPOSE")
+	viper.SetDefault("general.concurrency", runtime.NumCPU())
 	viper.SetDefault("render_default_file", "")
 	viper.SetDefault("render_values_file", "")
 	viper.SetDefault("render_templates_dirs", []string{})
