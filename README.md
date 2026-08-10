@@ -234,12 +234,7 @@ added the `cisco_profile` option to manage correctly the different devices.
 
 | Cisco Profile | Cisco Devices Verified    |
 |---------------|---------------------------|
-| general       | * ASA Firepower 2130      |
-|               | * Cisco 9500 Routers      |
-|               | * Cisco 4500 Routers      |
-|               | * Cisco 3750 Routers      |
-|               | * ASA 5585                |
-|---------------|---------------------------|
+| general       | * ASA Firepower 2130<br/>* Cisco 9500 Routers<br/>* Cisco 4500 Routers<br/> * Cisco 3750 Routers <br/>* ASA 5585 |
 | asa-fw-4k     | * ASA Firepower 4K Series |
 
 
