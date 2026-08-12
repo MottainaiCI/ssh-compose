@@ -28,6 +28,13 @@ type CompilerOpts struct {
 	Concurrency    int
 }
 
+func (o *CompilerOpts) GetConcurrency() int {
+	if o.Concurrency < 1 {
+		return 1
+	}
+	return o.Concurrency
+}
+
 func (o *CompilerOpts) IsGroupEnabled(g string) bool {
 	ans := true
 
@@ -144,11 +151,11 @@ func CompileGroupFiles(group *specs.SshCGroup, compiler SshCTemplateCompiler, op
 	(*compiler.GetVars())["group"] = group
 
 	waitGroup := &sync.WaitGroup{}
-	sem := semaphore.NewWeighted(int64(opts.Concurrency))
+	sem := semaphore.NewWeighted(int64(opts.GetConcurrency()))
 	ctx := context.TODO()
 	var ch chan helpers.ChannelError = make(
 		chan helpers.ChannelError,
-		opts.Concurrency,
+		opts.GetConcurrency(),
 	)
 
 	for _, s := range targets {
@@ -235,11 +242,11 @@ func CompileProjectFiles(proj *specs.SshCProject, compiler SshCTemplateCompiler,
 	}
 
 	waitGroup := &sync.WaitGroup{}
-	sem := semaphore.NewWeighted(int64(opts.Concurrency))
+	sem := semaphore.NewWeighted(int64(opts.GetConcurrency()))
 	ctx := context.TODO()
 	var ch chan helpers.ChannelError = make(
 		chan helpers.ChannelError,
-		opts.Concurrency,
+		opts.GetConcurrency(),
 	)
 
 	for _, s := range targets {
@@ -349,11 +356,11 @@ func CompileNodeFiles(node specs.SshCNode, compiler SshCTemplateCompiler, opts C
 	}
 
 	waitGroup := &sync.WaitGroup{}
-	sem := semaphore.NewWeighted(int64(opts.Concurrency))
+	sem := semaphore.NewWeighted(int64(opts.GetConcurrency()))
 	ctx := context.TODO()
 	var ch chan helpers.ChannelError = make(
 		chan helpers.ChannelError,
-		opts.Concurrency,
+		opts.GetConcurrency(),
 	)
 
 	nTargets := len(targets)

@@ -38,7 +38,9 @@ func (i *SshCInstance) ApplyNode(node *specs.SshCNode,
 	if len(node.ConfigTemplates) > 0 && !i.SkipCompile {
 
 		// Compile node templates
-		err = template.CompileNodeFiles(*node, compiler, template.CompilerOpts{})
+		err = template.CompileNodeFiles(*node, compiler, template.CompilerOpts{
+			Concurrency: i.Config.GetGeneral().Concurrency,
+		})
 		if err != nil {
 			return err
 		}
