@@ -330,6 +330,173 @@ $> ssh-compose a cisco-example
 
 ```
 
+## Security
+
+Sharing infrastructure configurations specifications in a git repository
+with cleartext passwords and/or private data is not a good idea.
+
+`ssh-compose` supplies three different means to hide data and protect them:
+encryption of the remotes, encryption of the variable files, using of
+encrypted secrets.
+
+The encryption key could be configured under the security section:
+
+```yaml
+security:
+  #key: "base64key"
+```
+
+or through environment variable `SSH_COMPOSE_SECURITY__KEY` or through the flag
+`--key` or `--keyfile <path>.`
+
+
+You can generate a valid key with the command:
+
+```bash
+$> ssh-compose security genkey --help
+Generate an encryption key base64 encoded.
+
+Usage:
+   security genkey [flags]
+
+Aliases:
+  genkey, g, gk
+
+Flags:
+  -h, --help          help for genkey
+  -l, --length uint   Define the length of the key (default 64)
+      --to string     Path of the keyfile to generate (stdout if not defined).
+```
+
+### Encryption Algorithm
+
+`ssh-compose` uses the same authenticated encryption scheme based on Argon2id and AES-256-GCM.
+
+The encryption process consists of two main stages: password/key derivation
+and authenticated symmetric encryption.
+
+1. Key Derivation
+
+A cryptographically secure random 16-byte salt is generated for every encryption operation.
+
+The supplied secret key is processed using Argon2id. The Argon2id parameters are configurable
+through the application configuration, allowing the key derivation cost to be tuned according
+to the deployment's security and performance requirements.
+
+The configurable parameters include:
+
+    Time cost / iterations
+
+    Memory cost
+
+    Parallelism
+
+    Derived key length
+
+The default configuration uses:
+
+    Time cost: 3 iterations
+
+    Memory cost: 64 MiB
+
+    Parallelism: 4
+
+    Derived key length: 32 bytes (256 bits)
+
+The resulting derived key is used as the AES encryption key.
+
+2. Authenticated Encryption
+
+The derived key is used with AES-256 in Galois/Counter Mode (GCM).
+
+A new cryptographically secure random nonce is generated for every encryption operation.
+
+AES-GCM provides both:
+
+    confidentiality, by encrypting the plaintext;
+
+    integrity and authenticity, by generating an authentication tag.
+
+Any modification of the encrypted data or authentication tag causes decryption to fail.
+Configuration
+
+The Argon2id key derivation parameters are configurable at the application configuration level
+This makes it possible to increase or decrease the computational and memory cost of key derivation
+without changing the underlying encryption algorithm.
+
+For example, deployments with stronger security requirements can increase the Argon2id time, memory,
+or parallelism parameters, while resource-constrained environments can select lower values.
+
+The configuration options could be passed through environment variables or through
+the `.ssh_compose.yaml` config:
+
+```yaml
+security:
+    dsa_opts:
+        time_iterations: 3
+        memory_usage: 65536
+        key_length: 32
+        parallelism: 4
+
+```
+
+The derived key length should remain compatible with AES-256, i.e. 32 bytes, when using the
+standard AES-256-GCM configuration.
+
+### Remotes configuration encryption
+
+The remotes configuration files could be encrypted with:
+
+```bash
+$> # Encrypt the remotes
+$> ssh-compose security remotes
+```
+
+and restore cleartext remotes file with:
+
+```bash
+$> # Decrypt the remotes
+$> ssh-compose security remotes --decrypt
+```
+
+### Encrypted var files
+
+```bash
+$> ssh-compose security encrypt --vars-file envs/vars/myvar.yml --to envs/vars/myvar_enc.yml
+```
+
+in the project file will be used `vars/myvar_enc.yml`.
+
+The var file could be decrypted with:
+
+```bash
+
+$> ssh-compose security decrypt --vars-file envs/vars/myvar.yml --to envs/vars/myvar_enc.yml
+```
+
+
+### Encrypted secrets file
+
+The encryption of the secrets file could be done with this command:
+
+```bash
+$> ssh-compose security encrypt --secrets-file /tmp/secrets_clear.yaml --to render/secrets.yaml
+```
+
+In the configuration file this option needs to be enabled:
+
+```yaml
+security:
+  encrypted_secrets: true
+```
+
+In a similar way, a secrets file could be decode with:
+
+```bash
+$> ssh-compose security decrypt --secrets-file render/secrets.yaml --to /tmp/secrets_clear.yaml
+```
+
+
 ## A simple example
 
 Considering a simple example where I want to upgrade the Ubuntu and Macaroni OS nodes
