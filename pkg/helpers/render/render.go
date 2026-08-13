@@ -59,6 +59,7 @@ func GetTemplates(templateDirs []string) ([]*chart.File, error) {
 func RenderContentWithTemplates(
 	raw, valuesFile, defaultFile, originFile string,
 	overrideValues map[string]interface{},
+	secrets map[string]interface{},
 	templateDirs []string) (string, error) {
 
 	var err error
@@ -115,6 +116,10 @@ func RenderContentWithTemplates(
 		}
 	}
 
+	if len(secrets) > 0 {
+		values["secrets"] = secrets
+	}
+
 	if len(overrideValues) > 0 {
 		for k, v := range overrideValues {
 			values[k] = v
@@ -165,6 +170,8 @@ func RenderContentWithTemplates(
 func RenderContent(raw, valuesFile, defaultFile, originFile string,
 	overrideValues map[string]interface{}) (string, error) {
 
+	secrets := make(map[string]interface{}, 0)
+
 	return RenderContentWithTemplates(raw, valuesFile, defaultFile, originFile,
-		overrideValues, []string{})
+		overrideValues, secrets, []string{})
 }

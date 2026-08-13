@@ -26,6 +26,12 @@ func (i *SshCInstance) LoadEnvironments() error {
 		return errors.New("No environment directories configured.")
 	}
 
+	// Retrieve secrets if present
+	secrets, err := i.Config.GetSecrets()
+	if err != nil {
+		return fmt.Errorf("error on retrieve secrets: %s", err.Error())
+	}
+
 	for _, edir := range i.Config.GetEnvironmentDirs() {
 		i.Logger.Debug("Checking directory", edir, "...")
 
@@ -61,6 +67,7 @@ func (i *SshCInstance) LoadEnvironments() error {
 					i.Config.RenderDefaultFile,
 					file.Name(),
 					i.Config.RenderEnvsVars,
+					*secrets,
 					i.Config.RenderTemplatesDirs,
 				)
 				if err != nil {
@@ -78,7 +85,7 @@ func (i *SshCInstance) LoadEnvironments() error {
 				continue
 			}
 
-			err = i.loadExtraFiles(env)
+			err = i.loadExtraFiles(env, secrets)
 			if err != nil {
 				return err
 			}
@@ -86,7 +93,7 @@ func (i *SshCInstance) LoadEnvironments() error {
 			i.AddEnvironment(*env)
 
 			// Check for encrypted vars and decrypt it if possible
-			err = i.decodeEncryptedEnvVars(env)
+			err = i.decodeEncryptedEnvVars(env, secrets)
 			if err != nil {
 				return err
 			}
@@ -100,7 +107,7 @@ func (i *SshCInstance) LoadEnvironments() error {
 	return nil
 }
 
-func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
+func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment, secrets *map[string]interface{}) error {
 	envBaseDir, err := filepath.Abs(path.Dir(env.File))
 	if err != nil {
 		return err
@@ -135,6 +142,7 @@ func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
 					i.Config.RenderDefaultFile,
 					cfile,
 					i.Config.RenderEnvsVars,
+					*secrets,
 					i.Config.RenderTemplatesDirs,
 				)
 				if err != nil {
@@ -186,6 +194,7 @@ func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
 						i.Config.RenderDefaultFile,
 						gfile,
 						i.Config.RenderEnvsVars,
+						*secrets,
 						i.Config.RenderTemplatesDirs,
 					)
 					if err != nil {
@@ -214,7 +223,7 @@ func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
 		if len(proj.IncludeEnvFiles) > 0 {
 			// Load external env vars files
 			for _, efile := range proj.IncludeEnvFiles {
-				evars, err := i.loadEnvFile(envBaseDir, efile, &env.Projects[idx])
+				evars, err := i.loadEnvFile(envBaseDir, efile, &env.Projects[idx], secrets)
 				if err != nil {
 					return err
 				} else if evars != nil {
@@ -226,12 +235,14 @@ func (i *SshCInstance) loadExtraFiles(env *specs.SshCEnvironment) error {
 
 	}
 
-	err = i.loadIncludeHooks(env)
+	err = i.loadIncludeHooks(env, secrets)
 
 	return err
 }
 
-func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
+func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment,
+	secrets *map[string]interface{}) error {
+
 	envBaseDir, err := filepath.Abs(path.Dir(env.File))
 	if err != nil {
 		return err
@@ -249,7 +260,7 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 
 					// Load project included hooks
 					hf := path.Join(envBaseDir, hfile)
-					hooks, err := i.getHooks(hfile, hf, &proj)
+					hooks, err := i.getHooks(hfile, hf, &proj, secrets)
 					if err != nil {
 						return err
 					}
@@ -283,7 +294,7 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 					for _, hfile := range hinclude.GetFiles() {
 
 						hf := path.Join(envBaseDir, hfile)
-						hooks, err := i.getHooks(hfile, hf, &proj)
+						hooks, err := i.getHooks(hfile, hf, &proj, secrets)
 						if err != nil {
 							return err
 						}
@@ -312,7 +323,7 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 					for _, hinclude := range n.IncludeHooksFiles {
 						for _, hfile := range hinclude.GetFiles() {
 							hf := path.Join(envBaseDir, hfile)
-							hooks, err := i.getHooks(hfile, hf, &proj)
+							hooks, err := i.getHooks(hfile, hf, &proj, secrets)
 							if err != nil {
 								return err
 							}
@@ -338,7 +349,7 @@ func (i *SshCInstance) loadIncludeHooks(env *specs.SshCEnvironment) error {
 	return nil
 }
 
-func (i *SshCInstance) getHooks(hfile, hfileAbs string, proj *specs.SshCProject) (*specs.SshCHooks, error) {
+func (i *SshCInstance) getHooks(hfile, hfileAbs string, proj *specs.SshCProject, secrets *map[string]interface{}) (*specs.SshCHooks, error) {
 
 	ans := &specs.SshCHooks{}
 
@@ -363,6 +374,7 @@ func (i *SshCInstance) getHooks(hfile, hfileAbs string, proj *specs.SshCProject)
 			i.Config.RenderDefaultFile,
 			hfile,
 			i.Config.RenderEnvsVars,
+			*secrets,
 			i.Config.RenderTemplatesDirs,
 		)
 		if err != nil {
@@ -387,7 +399,9 @@ func (i *SshCInstance) getHooks(hfile, hfileAbs string, proj *specs.SshCProject)
 	return ans, nil
 }
 
-func (i *SshCInstance) loadEnvFile(envBaseDir, efile string, proj *specs.SshCProject) (*specs.SshCEnvVars, error) {
+func (i *SshCInstance) loadEnvFile(envBaseDir, efile string,
+	proj *specs.SshCProject, secrets *map[string]interface{}) (*specs.SshCEnvVars, error) {
+
 	if !helpers.Exists(path.Join(envBaseDir, efile)) {
 		i.Logger.Warning("For project", proj.Name, "included env file", efile,
 			"is not present.")
@@ -416,6 +430,7 @@ func (i *SshCInstance) loadEnvFile(envBaseDir, efile string, proj *specs.SshCPro
 			i.Config.RenderDefaultFile,
 			efile,
 			i.Config.RenderEnvsVars,
+			*secrets,
 			i.Config.RenderTemplatesDirs,
 		)
 		if err != nil {
@@ -435,7 +450,8 @@ func (i *SshCInstance) loadEnvFile(envBaseDir, efile string, proj *specs.SshCPro
 	return evars, nil
 }
 
-func (i *SshCInstance) decodeEncryptedEnvVars(env *specs.SshCEnvironment) error {
+func (i *SshCInstance) decodeEncryptedEnvVars(env *specs.SshCEnvironment,
+	secrets *map[string]interface{}) error {
 
 	var err error
 	keyBytes := []byte{}
@@ -496,6 +512,7 @@ func (i *SshCInstance) decodeEncryptedEnvVars(env *specs.SshCEnvironment) error 
 					i.Config.RenderDefaultFile,
 					"-",
 					i.Config.RenderEnvsVars,
+					*secrets,
 					i.Config.RenderTemplatesDirs,
 				)
 				if err != nil {

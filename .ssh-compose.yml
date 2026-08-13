@@ -10,6 +10,12 @@ logging:
 
 render_values_file: ./contrib/render/values.yml
 #render_default_file: ./contrib/examples/values.yml
+render_secrets_file: ./contrib/render/secrets.yaml
+
+security:
+  #key: "base64key"
+  #encrypted_secrets: false
+
 # Define the directories list where load environments.
 env_dirs:
 - ./contrib/envs
