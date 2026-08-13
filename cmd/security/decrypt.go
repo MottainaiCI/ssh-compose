@@ -135,8 +135,8 @@ func NewDecryptCommand(config *specs.SshComposeConfig) *cobra.Command {
 	}
 
 	pflags := cmd.Flags()
-	pflags.String("vars-file", "", "Path of the vars file to encrypt.")
-	pflags.String("secrets-file", "", "Path of the secrets file to encrypt.")
+	pflags.String("vars-file", "", "Path of the vars file to decrypt.")
+	pflags.String("secrets-file", "", "Path of the secrets file to decrypt.")
 	pflags.String("to", "", "Path of the vars file to generate (stdout if not defined).")
 
 	return cmd
