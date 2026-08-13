@@ -13,6 +13,8 @@ projects:
       - envs:
           var1: "value1"
           var2: "value2"
+          database_user: {{ .Values.secrets.database.user }}
+          database_pwd: {{ .Values.secrets.database.pwd }}
 
     groups:
       - name: group-helloword
